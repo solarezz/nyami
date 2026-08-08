@@ -1,5 +1,6 @@
 import type { Recognition, DaySummary, RecognizeRequest } from '@nyami/shared'
 import { config } from '../config.js'
+import { offLookup } from './off.js'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -36,41 +37,79 @@ async function groqChat(messages: ChatMessage[], model: string, opts: ChatOpts =
   return data.choices?.[0]?.message?.content ?? ''
 }
 
-const RECOGNIZE_SYSTEM = `Ты — нутрициолог. По описанию или фото блюда оцени его пищевую ценность одной порции.
-Отвечай СТРОГО валидным JSON без пояснений, по схеме:
+const RECOGNIZE_SYSTEM = `Ты — точный нутрициолог. Определи еду (по фото или описанию) и оцени её пищевую ценность.
+
+КАК СЧИТАТЬ ТОЧНО (это важно):
+1) Оцени ПЛОТНОСТЬ энергии — ккал на 100 г — именно для ЭТОГО продукта и способа приготовления.
+   Сильно повышают калорийность и ЖИРЫ (не занижай их!): жарка на масле, шоколадная глазурь,
+   сливки, сметана, майонез, сыр, орехи, сахар, сладкие соусы. Пример: пломбир в шоколадной
+   глазури ≈ 300–320 ккал/100 г, жаренное на масле +20–40% к калориям.
+2) Отдельно оцени ВЕС порции в граммах. Типичные ориентиры: эскимо 70–80 г, банан 120 г,
+   яблоко 150 г, тарелка супа 300–350 г, кусок хлеба 30 г, ломтик сыра 20 г.
+3) Если это УПАКОВАННЫЙ продукт и на фото ЧИТАЕТСЯ таблица «Пищевая ценность / на 100 г» —
+   ПРОЧИТАЙ её и возьми эти числа (это точные данные, confidence ≥ 0.9).
+
+Отвечай СТРОГО валидным JSON без пояснений:
 {
-  "name": "название блюда по-русски",
-  "emoji": "один подходящий эмодзи еды",
-  "grams": число (примерный вес порции в граммах),
-  "kcal": число (калории всей порции),
-  "protein": число (белки, г),
-  "carbs": число (углеводы, г),
-  "fat": число (жиры, г),
-  "confidence": число от 0 до 1 (насколько уверен),
-  "extras": [ { "name": "...", "emoji": "...", "grams": число, "kcal": число } ]
+  "name": "название по-русски",
+  "emoji": "один эмодзи еды",
+  "grams": число,                // вес порции, г
+  "per100kcal": число,           // калорийность на 100 г
+  "per100protein": число,        // белки на 100 г
+  "per100carbs": число,          // углеводы на 100 г
+  "per100fat": число,            // жиры на 100 г
+  "packaged": true|false,        // магазинный/брендовый продукт?
+  "query": "бренд и название для поиска в базе продуктов (если packaged), иначе ''",
+  "confidence": число 0..1,      // высокий (>0.85) только если прочитал этикетку или очень стандартный продукт
+  "extras": [ { "name":"...", "emoji":"...", "grams":число, "kcal":число } ]
 }
-extras — отдельные заметные компоненты (гарнир, хлеб, соус), если они есть; иначе пустой массив.`
+extras — отдельные заметные компоненты (гарнир, хлеб, соус), если есть; иначе [].`
 
 function num(v: unknown, fallback = 0): number {
   const n = typeof v === 'string' ? parseFloat(v) : (v as number)
   return Number.isFinite(n) ? n : fallback
 }
 
-function coerceRecognition(raw: string, fallbackName?: string): Recognition {
+interface RawReco {
+  name: string
+  emoji: string
+  grams: number
+  per100kcal: number
+  per100protein: number
+  per100carbs: number
+  per100fat: number
+  packaged: boolean
+  query: string
+  confidence: number
+  extras: { name: string; emoji: string; grams: number; kcal: number }[]
+}
+
+function coerceRaw(raw: string, fallbackName?: string): RawReco {
   // На случай reasoning-моделей убираем блок размышлений.
   const clean = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   const start = clean.indexOf('{')
   const end = clean.lastIndexOf('}')
   const json = start >= 0 && end > start ? clean.slice(start, end + 1) : clean
   const p = JSON.parse(json) as Record<string, unknown>
+
+  const grams = Math.max(1, Math.round(num(p.grams, 100)))
+  // Плотность на 100 г. Если модель дала только суммарные значения — выводим из них.
+  const per = (per100: unknown, total: unknown) => {
+    const d = num(per100)
+    if (d > 0) return d
+    return grams > 0 ? (num(total) / grams) * 100 : 0
+  }
+
   return {
     name: String(p.name ?? fallbackName ?? 'Блюдо'),
     emoji: String(p.emoji ?? '🍽️').slice(0, 4),
-    grams: Math.max(1, Math.round(num(p.grams, 100))),
-    kcal: Math.max(0, Math.round(num(p.kcal))),
-    protein: Math.max(0, Math.round(num(p.protein))),
-    carbs: Math.max(0, Math.round(num(p.carbs))),
-    fat: Math.max(0, Math.round(num(p.fat))),
+    grams,
+    per100kcal: Math.max(0, per(p.per100kcal, p.kcal)),
+    per100protein: Math.max(0, per(p.per100protein, p.protein)),
+    per100carbs: Math.max(0, per(p.per100carbs, p.carbs)),
+    per100fat: Math.max(0, per(p.per100fat, p.fat)),
+    packaged: Boolean(p.packaged),
+    query: String(p.query ?? ''),
     confidence: Math.min(1, Math.max(0, num(p.confidence, 0.8))),
     extras: Array.isArray(p.extras)
       ? (p.extras as Record<string, unknown>[]).slice(0, 5).map((e) => ({
@@ -83,13 +122,28 @@ function coerceRecognition(raw: string, fallbackName?: string): Recognition {
   }
 }
 
+function toRecognition(r: RawReco): Recognition {
+  const f = r.grams / 100
+  return {
+    name: r.name,
+    emoji: r.emoji,
+    grams: r.grams,
+    kcal: Math.max(0, Math.round(r.per100kcal * f)),
+    protein: Math.max(0, Math.round(r.per100protein * f)),
+    carbs: Math.max(0, Math.round(r.per100carbs * f)),
+    fat: Math.max(0, Math.round(r.per100fat * f)),
+    confidence: r.confidence,
+    extras: r.extras,
+  }
+}
+
 export async function groqRecognize(input: RecognizeRequest): Promise<Recognition> {
   const hasImage = Boolean(input.imageBase64)
   const model = hasImage ? config.groqVisionModel : config.groqTextModel
 
   const userContent: ChatContent = hasImage
     ? [
-        { type: 'text', text: 'Определи блюдо на фото и оцени его КБЖУ.' },
+        { type: 'text', text: 'Определи еду на фото и оцени КБЖУ. Если это упаковка с таблицей пищевой ценности — прочитай её.' },
         {
           type: 'image_url',
           image_url: {
@@ -99,7 +153,7 @@ export async function groqRecognize(input: RecognizeRequest): Promise<Recognitio
           },
         },
       ]
-    : `Блюдо: ${input.text ?? ''}`
+    : `Продукт/блюдо: ${input.text ?? ''}`
 
   const raw = await groqChat(
     [
@@ -110,7 +164,22 @@ export async function groqRecognize(input: RecognizeRequest): Promise<Recognitio
     // Vision-модель (qwen) — reasoning-модель: прячем <think>. Текстовая — строгий JSON-режим.
     hasImage ? { reasoningFormat: 'hidden' } : { jsonMode: true },
   )
-  return coerceRecognition(raw, input.text)
+
+  const reco = coerceRaw(raw, input.text)
+
+  // Для упакованных продуктов уточняем калорийность/100 г из Open Food Facts.
+  if (reco.packaged && reco.query) {
+    const off = await offLookup(reco.query)
+    if (off && off.per100kcal > 0) {
+      reco.per100kcal = off.per100kcal
+      if (off.per100protein > 0) reco.per100protein = off.per100protein
+      if (off.per100carbs > 0) reco.per100carbs = off.per100carbs
+      if (off.per100fat > 0) reco.per100fat = off.per100fat
+      reco.confidence = Math.max(reco.confidence, 0.9)
+    }
+  }
+
+  return toRecognition(reco)
 }
 
 export async function groqCoach(day: DaySummary, message: string): Promise<string> {
