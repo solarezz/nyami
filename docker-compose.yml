@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nyami-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nyami
+      POSTGRES_PASSWORD: nyami
+      POSTGRES_DB: nyami
+    ports:
+      - "5432:5432"
+    volumes:
+      - nyami-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nyami -d nyami"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nyami-pgdata:

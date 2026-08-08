@@ -1,0 +1,35 @@
+import type {
+  MeResponse, DaySummary, WeekDay, Meal, Recognition,
+  AddMealRequest, RecognizeRequest, CoachResponse,
+} from '@nyami/shared'
+
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
+
+// В Telegram передаём подписанный initData; в браузере он пустой → бэк работает в dev-режиме.
+function authHeader(): Record<string, string> {
+  const initData = window.Telegram?.WebApp.initData ?? ''
+  return initData ? { Authorization: `tma ${initData}` } : {}
+}
+
+async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const res = await fetch(BASE + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...authHeader(), ...opts.headers },
+  })
+  if (!res.ok) throw new Error(`API ${res.status} ${path}`)
+  return res.json() as Promise<T>
+}
+
+export interface WeekResponse {
+  days: WeekDay[]
+  weightSeries: number[]
+}
+
+export const api = {
+  getMe: () => req<MeResponse>('/api/me'),
+  getDay: () => req<DaySummary>('/api/day'),
+  getWeek: () => req<WeekResponse>('/api/week'),
+  addMeal: (body: AddMealRequest) => req<Meal>('/api/meals', { method: 'POST', body: JSON.stringify(body) }),
+  recognize: (body: RecognizeRequest) => req<Recognition>('/api/recognize', { method: 'POST', body: JSON.stringify(body) }),
+  coach: (message: string) => req<CoachResponse>('/api/coach', { method: 'POST', body: JSON.stringify({ message }) }),
+}
