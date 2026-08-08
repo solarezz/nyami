@@ -3,7 +3,8 @@ import type {
   AddMealRequest, RecognizeRequest, CoachResponse,
 } from '@nyami/shared'
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
+// В проде фронт и API на одном домене → относительный путь. В dev — локальный бэкенд.
+const BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8787')
 
 // В Telegram передаём подписанный initData; в браузере он пустой → бэк работает в dev-режиме.
 function authHeader(): Record<string, string> {

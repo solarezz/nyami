@@ -1,0 +1,41 @@
+name: nyami-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nyami-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nyami
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: nyami
+    volumes:
+      - nyami-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nyami -d nyami"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: nyami-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      BOT_TOKEN: ${BOT_TOKEN}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      DATABASE_URL: postgresql://nyami:${DB_PASSWORD}@db:5432/nyami
+      WEB_ORIGIN: https://nyami.solarezz.dev
+    # применяем миграции и стартуем
+    command: sh -c "npx drizzle-kit migrate && node dist/server.js"
+    ports:
+      # только на localhost — наружу пускает nginx
+      - "127.0.0.1:8787:8787"
+
+volumes:
+  nyami-pgdata:

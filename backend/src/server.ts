@@ -1,5 +1,8 @@
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import fastifyStatic from '@fastify/static'
 import { config } from './config.js'
 import { registerRoutes } from './routes.js'
 import { createMockRepo } from './repo.js'
@@ -17,6 +20,20 @@ await app.register(cors, {
 
 const repo = config.databaseUrl ? createDrizzleRepo() : createMockRepo()
 registerRoutes(app, repo)
+
+// В проде тот же сервер отдаёт собранный фронт (frontend/dist). В dev его нет — фронт крутит Vite.
+const staticDir = fileURLToPath(new URL('../../frontend/dist', import.meta.url))
+if (existsSync(staticDir)) {
+  await app.register(fastifyStatic, { root: staticDir })
+  // SPA-фолбэк: любые не-/api GET отдают index.html.
+  app.setNotFoundHandler((req, reply) => {
+    if (req.method === 'GET' && !req.url.startsWith('/api')) {
+      return reply.sendFile('index.html')
+    }
+    reply.code(404).send({ error: 'not_found' })
+  })
+  app.log.info(`Статика фронта: ${staticDir}`)
+}
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' })
