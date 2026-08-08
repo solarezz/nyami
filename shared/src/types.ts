@@ -106,3 +106,13 @@ export interface CoachRequest {
 export interface CoachResponse {
   reply: string
 }
+
+/** Часто добавляемое блюдо (из истории пользователя). */
+export interface FrequentMeal {
+  name: string
+  emoji: string
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+}

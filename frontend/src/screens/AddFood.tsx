@@ -1,22 +1,28 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icons'
-import { frequentMeals } from '../data/mock'
+import { api } from '../api'
 import { useData } from '../data/store'
 import { fileToDataUrl } from '../utils/image'
 import type { Screen } from '../App'
+import type { FrequentMeal } from '../types'
 
 export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { recognize, addMeal } = useData()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState<false | 'text' | 'photo' | 'quick'>(false)
+  const [frequent, setFrequent] = useState<FrequentMeal[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
 
-  const addQuick = async (f: { emoji: string; name: string; kcal: number }) => {
+  useEffect(() => {
+    api.getFrequent().then(setFrequent).catch(() => {})
+  }, [])
+
+  const addQuick = async (f: FrequentMeal) => {
     if (busy) return
     setBusy('quick')
     try {
-      await addMeal({ name: f.name, emoji: f.emoji, kcal: f.kcal, protein: 0, carbs: 0, fat: 0 })
+      await addMeal({ name: f.name, emoji: f.emoji, kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat })
       onNavigate('today')
     } catch {
       setBusy(false)
@@ -76,14 +82,18 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         <div className="tiny">Что ты съел</div>
         <textarea ref={textRef} className="inputcard" rows={2} value={text} placeholder="Напиши блюдо: «тарелка борща со сметаной»…" onChange={(e) => setText(e.target.value)} />
 
-        <div className="tiny">Часто</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-          {frequentMeals.map((f) => (
-            <button className="qchip" key={f.name} onClick={() => addQuick(f)} disabled={busy !== false}>
-              {f.emoji} {f.name}<span className="muted" style={{ marginLeft: 'auto' }}>{f.kcal}</span>
-            </button>
-          ))}
-        </div>
+        {frequent.length > 0 && (
+          <>
+            <div className="tiny">Часто</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
+              {frequent.map((f) => (
+                <button className="qchip" key={f.name} onClick={() => addQuick(f)} disabled={busy !== false}>
+                  {f.emoji} {f.name}<span className="muted" style={{ marginLeft: 'auto' }}>{f.kcal}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <div style={{ flex: 1 }} />
         <button className="btn" onClick={onRecognizeText} disabled={busy !== false} style={busy ? { opacity: 0.7 } : undefined}>

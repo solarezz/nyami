@@ -1,4 +1,6 @@
-import type { DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest } from '@nyami/shared'
+import type {
+  DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal,
+} from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
 
 export const WATER_GOAL = 8
@@ -13,6 +15,18 @@ export interface NyamiRepo {
   addMeal(userId: number, meal: AddMealRequest): Promise<Meal>
   deleteMeal(userId: number, mealId: string): Promise<void>
   setWater(userId: number, glasses: number): Promise<number>
+  getFrequent(userId: number): Promise<FrequentMeal[]>
+}
+
+// Топ часто добавляемых блюд из списка приёмов (группировка по названию).
+export function topFrequent(all: { name: string; emoji: string; kcal: number; protein: number; carbs: number; fat: number }[], limit = 6): FrequentMeal[] {
+  const byName = new Map<string, { m: FrequentMeal; count: number }>()
+  for (const m of all) {
+    const cur = byName.get(m.name)
+    if (cur) cur.count++
+    else byName.set(m.name, { m: { name: m.name, emoji: m.emoji, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat }, count: 1 })
+  }
+  return [...byName.values()].sort((a, b) => b.count - a.count).slice(0, limit).map((x) => x.m)
 }
 
 const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -126,6 +140,10 @@ export function createMockRepo(): NyamiRepo {
       if (!water.has(u)) water.set(u, new Map())
       water.get(u)!.set(todayKey(), clamped)
       return clamped
+    },
+
+    async getFrequent(u) {
+      return topFrequent(getMeals(u))
     },
   }
 }

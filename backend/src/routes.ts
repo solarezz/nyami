@@ -40,6 +40,9 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
       return { done }
     })
 
+    // Часто добавляемые блюда пользователя.
+    api.get('/api/frequent', async (req) => repo.getFrequent(req.user.id))
+
     // Распознавание еды: фото или текст → КБЖУ (через AI-провайдера).
     api.post<{ Body: RecognizeRequest }>('/api/recognize', async (req) => ai.recognize(req.body))
 

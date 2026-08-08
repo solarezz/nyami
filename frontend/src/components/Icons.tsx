@@ -4,7 +4,7 @@
 export type IconName =
   | 'bowl' | 'flame' | 'plus' | 'minus' | 'chev' | 'chevl'
   | 'camera' | 'pencil' | 'spark' | 'send' | 'chat'
-  | 'grid' | 'chart' | 'user' | 'drop' | 'scale' | 'check'
+  | 'grid' | 'chart' | 'user' | 'drop' | 'scale' | 'check' | 'trash'
 
 export function Icon({ name, style }: { name: IconName; style?: React.CSSProperties }) {
   return (
@@ -35,6 +35,7 @@ export function IconSprite() {
         <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.7l5.66 5.66a8 8 0 1 1-11.31 0Z" /></symbol>
         <symbol id="i-scale" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
         <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M10 11v6M14 11v6" /></symbol>
       </defs>
     </svg>
   )

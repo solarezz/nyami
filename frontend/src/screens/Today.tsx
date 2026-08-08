@@ -144,7 +144,7 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
 function MealCard({ meal, bg, onDelete }: { meal: Meal; bg: string; onDelete: () => void }) {
   return (
-    <button className="meal" onClick={onDelete}>
+    <div className="meal">
       <div className="thumb" style={{ background: bg }}>{meal.emoji}</div>
       <div className="mm">
         <div className="nm">{meal.name}</div>
@@ -158,6 +158,7 @@ function MealCard({ meal, bg, onDelete }: { meal: Meal; bg: string; onDelete: ()
         <div className="kc">{meal.kcal}<small> ккал</small></div>
         <div className="tm">{meal.time}</div>
       </div>
-    </button>
+      <button className="del" onClick={onDelete} aria-label="Удалить"><Icon name="trash" /></button>
+    </div>
   )
 }

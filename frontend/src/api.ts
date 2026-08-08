@@ -1,5 +1,5 @@
 import type {
-  MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile,
+  MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile, FrequentMeal,
   AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest,
 } from '@nyami/shared'
 
@@ -34,6 +34,7 @@ export const api = {
   addMeal: (body: AddMealRequest) => req<Meal>('/api/meals', { method: 'POST', body: JSON.stringify(body) }),
   deleteMeal: (id: string) => req<{ ok: boolean }>(`/api/meals/${id}`, { method: 'DELETE' }),
   setWater: (glasses: number) => req<{ done: number }>('/api/water', { method: 'POST', body: JSON.stringify({ glasses }) }),
+  getFrequent: () => req<FrequentMeal[]>('/api/frequent'),
   recognize: (body: RecognizeRequest) => req<Recognition>('/api/recognize', { method: 'POST', body: JSON.stringify(body) }),
   coach: (message: string) => req<CoachResponse>('/api/coach', { method: 'POST', body: JSON.stringify({ message }) }),
 }

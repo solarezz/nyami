@@ -1,7 +1,7 @@
-import { and, eq, gte, asc } from 'drizzle-orm'
+import { and, eq, gte, asc, desc } from 'drizzle-orm'
 import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest } from '@nyami/shared'
 import {
-  type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey,
+  type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey, topFrequent,
 } from '../repo.js'
 import { computeNorm } from '../nutrition.js'
 import { db, type Db } from './client.js'
@@ -118,6 +118,14 @@ export function createDrizzleRepo(): NyamiRepo {
         .insert(days).values({ telegramId: userId, date: todayKey(), water: clamped })
         .onConflictDoUpdate({ target: [days.telegramId, days.date], set: { water: clamped } })
       return clamped
+    },
+
+    async getFrequent(userId) {
+      const rows = await database
+        .select().from(meals)
+        .where(eq(meals.telegramId, userId))
+        .orderBy(desc(meals.eatenAt)).limit(200)
+      return topFrequent(rows)
     },
   }
 }
