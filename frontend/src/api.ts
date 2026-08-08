@@ -13,10 +13,12 @@ function authHeader(): Record<string, string> {
 }
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
-  const res = await fetch(BASE + path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', ...authHeader(), ...opts.headers },
-  })
+  const headers: Record<string, string> = { ...authHeader(), ...(opts.headers as Record<string, string>) }
+  // Content-Type ставим ТОЛЬКО при наличии тела: иначе Fastify роняет пустой
+  // DELETE/GET с ошибкой FST_ERR_CTP_EMPTY_JSON_BODY.
+  if (opts.body != null) headers['Content-Type'] = 'application/json'
+
+  const res = await fetch(BASE + path, { ...opts, headers })
   if (!res.ok) throw new Error(`API ${res.status} ${path}`)
   return res.json() as Promise<T>
 }
