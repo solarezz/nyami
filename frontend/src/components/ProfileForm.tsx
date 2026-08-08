@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { UpdateProfileRequest } from '@nyami/shared'
 import { computeNorm } from '../utils/nutrition'
+import { NumberField } from './NumberField'
 
 const ACTIVITIES = [
   { key: 'low', label: 'Низкая' },
@@ -13,12 +14,6 @@ const GOALS = [
   { key: 'maintain', label: 'Держать' },
   { key: 'gain', label: 'Набрать' },
 ] as const
-
-const numInputStyle: React.CSSProperties = {
-  width: 82, textAlign: 'right', fontWeight: 900, fontSize: 17,
-  border: 'none', background: 'transparent', color: 'var(--ink)',
-  fontFamily: 'inherit', outline: 'none',
-}
 
 export function ProfileForm({
   initial, submitLabel, onSubmit,
@@ -52,18 +47,9 @@ export function ProfileForm({
       </div>
 
       <div className="card" style={{ padding: '4px 18px' }}>
-        <div className="frow"><span className="muted">Возраст</span>
-          <input style={numInputStyle} type="number" inputMode="numeric" value={v.age}
-            onChange={(e) => set('age', clampInt(e.target.value, 5, 120))} />
-        </div>
-        <div className="frow"><span className="muted">Рост, см</span>
-          <input style={numInputStyle} type="number" inputMode="numeric" value={v.heightCm}
-            onChange={(e) => set('heightCm', clampInt(e.target.value, 80, 250))} />
-        </div>
-        <div className="frow"><span className="muted">Вес, кг</span>
-          <input style={numInputStyle} type="number" inputMode="decimal" value={v.weightKg}
-            onChange={(e) => set('weightKg', clampNum(e.target.value, 20, 400))} />
-        </div>
+        <NumberField label="Возраст" value={v.age} min={5} max={120} onChange={(n) => set('age', n)} />
+        <NumberField label="Рост, см" value={v.heightCm} min={80} max={250} onChange={(n) => set('heightCm', n)} />
+        <NumberField label="Вес, кг" value={v.weightKg} min={20} max={400} decimals={1} onChange={(n) => set('weightKg', n)} />
       </div>
 
       <div className="tiny">Активность</div>
@@ -96,13 +82,4 @@ export function ProfileForm({
       </button>
     </>
   )
-}
-
-function clampInt(s: string, min: number, max: number): number {
-  const n = Math.round(Number(s) || 0)
-  return Math.max(min, Math.min(max, n))
-}
-function clampNum(s: string, min: number, max: number): number {
-  const n = Number(s) || 0
-  return Math.max(min, Math.min(max, n))
 }

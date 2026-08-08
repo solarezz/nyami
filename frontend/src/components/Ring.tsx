@@ -32,9 +32,9 @@ export function RingStat({
   progress, color, track, size = 120, stroke = 13, label,
 }: RingProps & { label: React.ReactNode }) {
   return (
-    <div style={{ position: 'relative', width: size, height: size, flex: 'none' }}>
+    <div style={{ position: 'relative', display: 'inline-block', width: size, height: size, flex: 'none', lineHeight: 0 }}>
       <Ring progress={progress} color={color} track={track} size={size} stroke={stroke} />
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontWeight: 900 }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontWeight: 900, lineHeight: 1 }}>
         {label}
       </div>
     </div>

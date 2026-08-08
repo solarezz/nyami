@@ -33,3 +33,22 @@ export function showConfirm(message: string): Promise<boolean> {
   }
   return Promise.resolve(window.confirm(message))
 }
+
+/**
+ * Нативная кнопка «Назад» в шапке Telegram (не своя в контенте).
+ * Возвращает cleanup — снимает обработчик и прячет кнопку.
+ */
+export function setBackButton(onClick: (() => void) | null): () => void {
+  const bb = window.Telegram?.WebApp.BackButton
+  if (!bb) return () => {}
+  if (!onClick) {
+    bb.hide()
+    return () => {}
+  }
+  bb.onClick(onClick)
+  bb.show()
+  return () => {
+    bb.offClick(onClick)
+    bb.hide()
+  }
+}

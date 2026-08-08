@@ -53,7 +53,6 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   return (
     <div className="screen gap fade">
       <div className="topbar">
-        <button className="iconbtn" onClick={() => onNavigate('add')} aria-label="Назад"><Icon name="chevl" /></button>
         <div className="h2">Проверь и добавь</div>
       </div>
 

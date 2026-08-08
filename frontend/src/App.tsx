@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { IconSprite } from './components/Icons'
 import { DataProvider, useData } from './data/store'
+import { setBackButton } from './telegram'
 import { Onboarding } from './screens/Onboarding'
 import { Today } from './screens/Today'
 import { AddFood } from './screens/AddFood'
@@ -31,9 +32,17 @@ function Root() {
   return <Router startOnboarding={!onboarded} />
 }
 
+// Куда ведёт нативная кнопка «Назад» с каждого экрана (undefined = кнопки нет).
+const BACK_TO: Partial<Record<Screen, Screen>> = { add: 'today', result: 'add', coach: 'today' }
+
 function Router({ startOnboarding }: { startOnboarding: boolean }) {
   // Новый пользователь начинает с онбординга, остальные — с «Сегодня».
   const [screen, setScreen] = useState<Screen>(startOnboarding ? 'onboarding' : 'today')
+
+  useEffect(() => {
+    const target = BACK_TO[screen]
+    return setBackButton(target ? () => setScreen(target) : null)
+  }, [screen])
 
   return (
     <>

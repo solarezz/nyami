@@ -55,7 +55,6 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   return (
     <div className="screen gap fade">
       <div className="topbar">
-        <button className="iconbtn" onClick={() => onNavigate('today')} aria-label="Назад"><Icon name="chevl" /></button>
         <div className="h2">Добавить еду</div>
       </div>
 

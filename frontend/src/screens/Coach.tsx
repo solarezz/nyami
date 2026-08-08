@@ -6,7 +6,7 @@ import { haptic } from '../telegram'
 import type { Screen } from '../App'
 import type { ChatMessage } from '../types'
 
-export function Coach({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { day, askCoach } = useData()
   const left = day ? day.goalKcal - day.eatenKcal : 0
   const frac = day ? day.eatenKcal / day.goalKcal : 0
@@ -37,7 +37,6 @@ export function Coach({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   return (
     <div className="screen fade" style={{ gap: 12 }}>
       <div className="topbar" style={{ marginBottom: 2 }}>
-        <button className="iconbtn" onClick={() => onNavigate('today')} aria-label="Назад"><Icon name="chevl" /></button>
         <div>
           <div className="h2" style={{ fontSize: 17 }}>Коуч Nyami</div>
           <div className="muted" style={{ fontSize: 12 }}>видит твой день</div>
