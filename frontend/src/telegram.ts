@@ -34,6 +34,13 @@ export function showConfirm(message: string): Promise<boolean> {
   return Promise.resolve(window.confirm(message))
 }
 
+// Показать сообщение: нативно в Telegram, иначе обычный alert.
+export function showAlert(message: string): void {
+  const tg = window.Telegram?.WebApp
+  if (tg?.showAlert) tg.showAlert(message)
+  else window.alert(message)
+}
+
 /**
  * Нативная кнопка «Назад» в шапке Telegram (не своя в контенте).
  * Возвращает cleanup — снимает обработчик и прячет кнопку.

@@ -3,7 +3,7 @@ import { Icon } from '../components/Icons'
 import { RingStat } from '../components/Ring'
 import { BottomNav } from '../components/BottomNav'
 import { useData } from '../data/store'
-import { haptic, showConfirm } from '../telegram'
+import { haptic, showAlert } from '../telegram'
 import type { Screen } from '../App'
 import type { Meal } from '../types'
 
@@ -40,9 +40,11 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }
 
   const onDelete = async (meal: Meal) => {
-    if (await showConfirm(`Удалить «${meal.name}»?`)) {
-      haptic('medium')
-      deleteMeal(meal.id)
+    haptic('medium')
+    try {
+      await deleteMeal(meal.id)
+    } catch {
+      showAlert('Не удалось удалить приём. Попробуй ещё раз.')
     }
   }
 

@@ -34,6 +34,7 @@ interface TelegramWebApp {
     selectionChanged: () => void
   }
   showConfirm?: (message: string, cb: (ok: boolean) => void) => void
+  showAlert?: (message: string, cb?: () => void) => void
 }
 
 interface Window {
