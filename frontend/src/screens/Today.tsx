@@ -108,9 +108,16 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
-            {Array.from({ length: d.water.goal }).map((_, i) => (
-              <span key={i} style={{ flex: 1, height: 22, borderRadius: 6, background: i < d.water.done ? 'var(--fat)' : 'var(--fat-soft)' }} />
-            ))}
+            {Array.from({ length: d.water.goal }).map((_, i) => {
+              const filled = i < d.water.done
+              return (
+                <span key={i} style={{
+                  flex: 1, height: 22, borderRadius: 6,
+                  background: filled ? 'var(--fat)' : 'transparent',
+                  boxShadow: filled ? 'none' : 'inset 0 0 0 1.5px color-mix(in srgb, var(--fat) 38%, transparent)',
+                }} />
+              )
+            })}
           </div>
         </div>
 

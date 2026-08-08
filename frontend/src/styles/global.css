@@ -119,6 +119,16 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 
 .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;box-shadow:var(--sh);background:linear-gradient(150deg,var(--accent2),var(--accent));display:grid;place-items:center;color:#fff;font-weight:900;font-size:26px;}
 
+/* ---- тёмная тема: отделяем поверхности от почти-чёрного фона ---- */
+:root{--card-border:transparent;}
+@media (prefers-color-scheme:dark){:root{--card-border:rgba(255,255,255,.09);--card:#23271f;}}
+:root[data-theme="light"]{--card-border:transparent;}
+:root[data-theme="dark"]{--card-border:rgba(255,255,255,.09);--card:#23271f;}
+
+.card,.mcard,.meal,.tile,.statc,.qchip,.wd .dc,.flamepill,.bub.in,.chatf,.inputcard,.optcard{
+  border:1px solid var(--card-border);
+}
+
 .mini-budget{background:linear-gradient(140deg,var(--accent2),var(--accent));color:#fff;border-radius:18px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh);}
 .mini-budget .n{font-size:22px;font-weight:900;}
 .mini-budget .s{font-size:12px;font-weight:800;opacity:.9;}
