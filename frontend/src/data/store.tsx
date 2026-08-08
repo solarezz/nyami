@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type {
-  MeResponse, DaySummary, Recognition, AddMealRequest, RecognizeRequest,
+  MeResponse, DaySummary, Recognition, AddMealRequest, RecognizeRequest, UpdateProfileRequest,
 } from '@nyami/shared'
 import { api, type WeekResponse } from '../api'
 
@@ -8,6 +8,7 @@ interface DataState {
   me: MeResponse | null
   day: DaySummary | null
   week: WeekResponse | null
+  onboarded: boolean
   loading: boolean
   error: string | null
   // Черновик распознавания, который передаётся с экрана «Добавить» в «Результат».
@@ -16,6 +17,9 @@ interface DataState {
   refresh: () => Promise<void>
   recognize: (req: RecognizeRequest) => Promise<Recognition>
   addMeal: (meal: AddMealRequest) => Promise<void>
+  deleteMeal: (id: string) => Promise<void>
+  setWater: (glasses: number) => Promise<void>
+  updateProfile: (req: UpdateProfileRequest) => Promise<void>
   askCoach: (message: string) => Promise<string>
 }
 
@@ -53,13 +57,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setDay(await api.getDay())
   }, [])
 
+  const deleteMeal = useCallback(async (id: string) => {
+    await api.deleteMeal(id)
+    setDay(await api.getDay())
+  }, [])
+
+  const setWater = useCallback(async (glasses: number) => {
+    const { done } = await api.setWater(glasses)
+    setDay((d) => (d ? { ...d, water: { ...d.water, done } } : d))
+  }, [])
+
+  const updateProfile = useCallback(async (req: UpdateProfileRequest) => {
+    await api.updateProfile(req)
+    const [m, d, w] = await Promise.all([api.getMe(), api.getDay(), api.getWeek()])
+    setMe(m)
+    setDay(d)
+    setWeek(w)
+  }, [])
+
   const askCoach = useCallback(async (message: string) => {
     const { reply } = await api.coach(message)
     return reply
   }, [])
 
   return (
-    <Ctx.Provider value={{ me, day, week, loading, error, pending, setPending, refresh, recognize, addMeal, askCoach }}>
+    <Ctx.Provider value={{
+      me, day, week, onboarded: me?.onboarded ?? false, loading, error, pending, setPending,
+      refresh, recognize, addMeal, deleteMeal, setWater, updateProfile, askCoach,
+    }}>
       {children}
     </Ctx.Provider>
   )

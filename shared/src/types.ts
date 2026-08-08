@@ -72,6 +72,17 @@ export interface Recognition {
 export interface MeResponse {
   user: { id: number; firstName?: string; username?: string }
   profile: Profile
+  onboarded: boolean
+}
+
+/** Данные из онбординга / редактирования профиля (норма считается на сервере). */
+export interface UpdateProfileRequest {
+  sex: 'male' | 'female'
+  age: number
+  heightCm: number
+  weightKg: number
+  activity: 'low' | 'medium' | 'high'
+  goal: 'lose' | 'maintain' | 'gain'
 }
 
 export interface AddMealRequest {

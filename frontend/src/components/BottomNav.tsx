@@ -21,7 +21,7 @@ export function BottomNav({ active, onNavigate }: { active: Screen; onNavigate: 
       <button className={`ni${active === 'coach' ? ' on' : ''}`} onClick={() => go('coach')} aria-label="Коуч">
         <Icon name="chat" />
       </button>
-      <button className="ni" onClick={() => go('today')} aria-label="Профиль">
+      <button className={`ni${active === 'profile' ? ' on' : ''}`} onClick={() => go('profile')} aria-label="Профиль">
         <Icon name="user" />
       </button>
     </nav>

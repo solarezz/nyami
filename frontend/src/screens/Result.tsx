@@ -98,7 +98,7 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         <button className="btn" onClick={confirm} disabled={saving} style={saving ? { opacity: 0.7 } : undefined}>
           <Icon name="check" />{saving ? 'Добавляю…' : `Добавить · ${total} ккал`}
         </button>
-        <button className="btn ghost">Поправить</button>
+        <button className="btn ghost" onClick={() => onNavigate('add')}>Поправить</button>
       </div>
     </div>
   )

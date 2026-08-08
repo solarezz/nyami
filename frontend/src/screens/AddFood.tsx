@@ -6,13 +6,29 @@ import { fileToDataUrl } from '../utils/image'
 import type { Screen } from '../App'
 
 export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { recognize } = useData()
-  const [text, setText] = useState('тарелка борща со сметаной и кусок ржаного хлеба')
-  const [busy, setBusy] = useState<false | 'text' | 'photo'>(false)
+  const { recognize, addMeal } = useData()
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState<false | 'text' | 'photo' | 'quick'>(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const textRef = useRef<HTMLTextAreaElement>(null)
+
+  const addQuick = async (f: { emoji: string; name: string; kcal: number }) => {
+    if (busy) return
+    setBusy('quick')
+    try {
+      await addMeal({ name: f.name, emoji: f.emoji, kcal: f.kcal, protein: 0, carbs: 0, fat: 0 })
+      onNavigate('today')
+    } catch {
+      setBusy(false)
+    }
+  }
 
   const onRecognizeText = async () => {
     if (busy) return
+    if (!text.trim()) {
+      textRef.current?.focus()
+      return
+    }
     setBusy('text')
     try {
       await recognize({ text })
@@ -53,18 +69,18 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           >
             <Icon name="camera" /><div className="ol">{busy === 'photo' ? 'Распознаю…' : 'Сфотографировать'}</div>
           </button>
-          <button className="optcard" style={{ background: 'var(--card)' }} onClick={() => onNavigate('today')} disabled={busy !== false}>
+          <button className="optcard" style={{ background: 'var(--card)' }} onClick={() => textRef.current?.focus()} disabled={busy !== false}>
             <Icon name="pencil" style={{ color: 'var(--accent)' }} /><div className="ol">Описать словами</div>
           </button>
         </div>
 
         <div className="tiny">Что ты съел</div>
-        <textarea className="inputcard" rows={2} value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea ref={textRef} className="inputcard" rows={2} value={text} placeholder="Напиши блюдо: «тарелка борща со сметаной»…" onChange={(e) => setText(e.target.value)} />
 
         <div className="tiny">Часто</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
           {frequentMeals.map((f) => (
-            <button className="qchip" key={f.name}>
+            <button className="qchip" key={f.name} onClick={() => addQuick(f)} disabled={busy !== false}>
               {f.emoji} {f.name}<span className="muted" style={{ marginLeft: 'auto' }}>{f.kcal}</span>
             </button>
           ))}

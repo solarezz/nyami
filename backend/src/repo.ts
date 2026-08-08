@@ -1,85 +1,156 @@
-import type { DaySummary, Profile, WeekDay, Meal, AddMealRequest } from '@nyami/shared'
+import type { DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest } from '@nyami/shared'
+import { computeNorm } from './nutrition.js'
 
-// Абстракция хранилища. Сейчас — in-memory мок; позже подменим на PostgreSQL (Drizzle),
-// не трогая роуты.
+export const WATER_GOAL = 8
+
+// Абстракция хранилища. Мок (in-memory) и Postgres (Drizzle) реализуют один интерфейс.
 export interface NyamiRepo {
   getProfile(userId: number): Promise<Profile>
+  isOnboarded(userId: number): Promise<boolean>
+  updateProfile(userId: number, req: UpdateProfileRequest): Promise<Profile>
   getToday(userId: number): Promise<DaySummary>
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
   addMeal(userId: number, meal: AddMealRequest): Promise<Meal>
+  deleteMeal(userId: number, mealId: string): Promise<void>
+  setWater(userId: number, glasses: number): Promise<number>
 }
 
-const baseProfile: Profile = {
+const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+export function todayKey(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** Стрик: сколько дней подряд (включая сегодня) есть хотя бы один приём пищи. */
+export function computeStreak(dates: Set<string>): number {
+  let streak = 0
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  // Если сегодня ещё пусто — стрик считаем от вчера.
+  if (!dates.has(d.toISOString().slice(0, 10))) d.setDate(d.getDate() - 1)
+  while (dates.has(d.toISOString().slice(0, 10))) {
+    streak++
+    d.setDate(d.getDate() - 1)
+  }
+  return streak
+}
+
+const defaultProfile: Profile = {
   sex: 'male', age: 28, heightCm: 178, weightKg: 82,
   activity: 'medium', goal: 'lose',
   dailyKcal: 1900, protein: 140, fat: 60, carbs: 190,
 }
 
-function seedMeals(): Meal[] {
-  return [
-    { id: 'm1', name: 'Омлет с овощами', emoji: '🍳', time: '08:20', kcal: 380, protein: 24, carbs: 8, fat: 26 },
-    { id: 'm2', name: 'Куриный салат', emoji: '🥗', time: '13:40', kcal: 620, protein: 42, carbs: 18, fat: 40 },
-    { id: 'm3', name: 'Яблоко + орехи', emoji: '🍎', time: '16:10', kcal: 240, protein: 6, carbs: 24, fat: 14 },
-  ]
-}
+type StoredMeal = Meal & { eatenAt: string }
 
 export function createMockRepo(): NyamiRepo {
-  // Хранилище приёмов пищи по пользователю (живёт в памяти процесса).
-  const mealsByUser = new Map<number, Meal[]>()
+  const meals = new Map<number, StoredMeal[]>()
+  const water = new Map<number, Map<string, number>>() // userId -> date -> glasses
+  const weights = new Map<number, number[]>()
+  const profiles = new Map<number, Profile>()
+  const onboardedSet = new Set<number>()
 
-  const getMeals = (userId: number): Meal[] => {
-    if (!mealsByUser.has(userId)) mealsByUser.set(userId, seedMeals())
-    return mealsByUser.get(userId)!
+  const getMeals = (u: number) => {
+    if (!meals.has(u)) meals.set(u, [])
+    return meals.get(u)!
   }
+  const getProfileFor = (u: number) => profiles.get(u) ?? defaultProfile
 
   return {
-    async getProfile() {
-      return baseProfile
+    async getProfile(u) {
+      return getProfileFor(u)
     },
 
-    async getToday(userId) {
-      const meals = getMeals(userId)
-      const sum = (k: keyof Meal) => meals.reduce((s, m) => s + (m[k] as number), 0)
-      const eaten = sum('kcal')
+    async isOnboarded(u) {
+      return onboardedSet.has(u)
+    },
+
+    async updateProfile(u, req) {
+      const norm = computeNorm(req)
+      const p: Profile = { ...req, ...norm }
+      profiles.set(u, p)
+      onboardedSet.add(u)
+      const w = weights.get(u) ?? []
+      w.push(req.weightKg)
+      weights.set(u, w)
+      return p
+    },
+
+    async getToday(u) {
+      const list = getMeals(u).filter((m) => m.eatenAt?.slice(0, 10) === todayKey())
+      const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
+      const p = getProfileFor(u)
+      const dates = new Set(getMeals(u).map((m) => m.eatenAt!.slice(0, 10)))
       return {
-        date: new Date().toISOString().slice(0, 10),
-        eatenKcal: eaten,
-        goalKcal: baseProfile.dailyKcal,
+        date: todayKey(),
+        eatenKcal: sum('kcal'),
+        goalKcal: p.dailyKcal,
         macros: {
-          protein: { eaten: sum('protein'), goal: baseProfile.protein },
-          fat: { eaten: sum('fat'), goal: baseProfile.fat },
-          carbs: { eaten: sum('carbs'), goal: baseProfile.carbs },
+          protein: { eaten: sum('protein'), goal: p.protein },
+          fat: { eaten: sum('fat'), goal: p.fat },
+          carbs: { eaten: sum('carbs'), goal: p.carbs },
         },
-        water: { done: 5, goal: 8 },
-        streak: 6,
-        meals,
+        water: { done: water.get(u)?.get(todayKey()) ?? 0, goal: WATER_GOAL },
+        streak: computeStreak(dates),
+        meals: list.map(stripInternal),
       }
     },
 
-    async getWeek() {
-      return {
-        days: [
-          { label: 'Пн', kcal: 1720, over: false },
-          { label: 'Вт', kcal: 1490, over: false },
-          { label: 'Ср', kcal: 2180, over: true },
-          { label: 'Чт', kcal: 1660, over: false },
-          { label: 'Пт', kcal: 1580, over: false },
-          { label: 'Сб', kcal: 2050, over: true },
-          { label: 'Вс', kcal: 1240, over: false, today: true },
-        ],
-        weightSeries: [84.0, 83.6, 83.2, 82.9, 82.5, 82.2, 82.0],
-      }
+    async getWeek(u) {
+      const p = getProfileFor(u)
+      const byDay = new Map<string, number>()
+      for (const m of getMeals(u)) byDay.set(m.eatenAt!.slice(0, 10), (byDay.get(m.eatenAt!.slice(0, 10)) ?? 0) + m.kcal)
+      const days = lastSevenDays(byDay, p.dailyKcal)
+      const w = weights.get(u) ?? []
+      return { days, weightSeries: w.length ? w.slice(-7) : [p.weightKg] }
     },
 
-    async addMeal(userId, req) {
-      const meals = getMeals(userId)
-      const meal: Meal = {
-        id: `m${Date.now()}`,
-        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+    async addMeal(u, req) {
+      const now = new Date()
+      const meal: StoredMeal = {
+        id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+        time: hhmm(now),
+        eatenAt: now.toISOString(),
         ...req,
       }
-      meals.push(meal)
-      return meal
+      getMeals(u).push(meal)
+      return stripInternal(meal)
+    },
+
+    async deleteMeal(u, mealId) {
+      meals.set(u, getMeals(u).filter((m) => m.id !== mealId))
+    },
+
+    async setWater(u, glasses) {
+      const clamped = Math.max(0, Math.min(20, Math.round(glasses)))
+      if (!water.has(u)) water.set(u, new Map())
+      water.get(u)!.set(todayKey(), clamped)
+      return clamped
     },
   }
+}
+
+// В моке храним eatenAt как служебное поле; наружу отдаём чистый Meal.
+function stripInternal(m: StoredMeal): Meal {
+  const { eatenAt: _drop, ...rest } = m
+  void _drop
+  return rest
+}
+
+export function lastSevenDays(byDay: Map<string, number>, norm: number): WeekDay[] {
+  const days: WeekDay[] = []
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    const kcal = byDay.get(key) ?? 0
+    days.push({ label: WEEKDAY_RU[d.getDay()], kcal, over: kcal > norm, today: i === 0 })
+  }
+  return days
+}
+
+export function hhmm(date: Date): string {
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }

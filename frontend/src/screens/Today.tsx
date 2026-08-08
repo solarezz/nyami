@@ -2,8 +2,8 @@ import { Wordmark } from '../components/Wordmark'
 import { Icon } from '../components/Icons'
 import { RingStat } from '../components/Ring'
 import { BottomNav } from '../components/BottomNav'
-import { mockWeekDates } from '../data/mock'
 import { useData } from '../data/store'
+import { haptic, showConfirm } from '../telegram'
 import type { Screen } from '../App'
 import type { Meal } from '../types'
 
@@ -14,13 +14,37 @@ const macroMeta = [
 ] as const
 
 const thumbBg = ['var(--carb-soft)', 'var(--accent-soft)', 'var(--prot-soft)']
+const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+function weekDates() {
+  const today = new Date()
+  const out: { dn: string; num: number; today: boolean }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    out.push({ dn: i === 0 ? 'Сег' : WD[d.getDay()], num: d.getDate(), today: i === 0 })
+  }
+  return out
+}
 
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day } = useData()
+  const { day, deleteMeal, setWater } = useData()
   if (!day) return null
   const d = day
   const left = d.goalKcal - d.eatenKcal
   const eatenFrac = d.eatenKcal / d.goalKcal
+
+  const changeWater = (delta: number) => {
+    haptic('light')
+    setWater(Math.max(0, d.water.done + delta))
+  }
+
+  const onDelete = async (meal: Meal) => {
+    if (await showConfirm(`Удалить «${meal.name}»?`)) {
+      haptic('medium')
+      deleteMeal(meal.id)
+    }
+  }
 
   return (
     <div className="screen gap fade">
@@ -30,11 +54,11 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       </div>
 
       <div className="week">
-        {mockWeekDates.map((w) => (
-          <button key={w.num} className={`wd${w.today ? ' on' : ''}`}>
+        {weekDates().map((w) => (
+          <div key={w.num} className={`wd${w.today ? ' on' : ''}`}>
             <span className="dn">{w.dn}</span>
             <span className="dc">{w.num}</span>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -57,8 +81,8 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         <div className="macros3">
           {macroMeta.map((m) => {
             const mp = d.macros[m.key]
-            const frac = mp.eaten / mp.goal
-            const rest = mp.goal - mp.eaten
+            const frac = mp.goal ? mp.eaten / mp.goal : 0
+            const rest = Math.max(0, mp.goal - mp.eaten)
             return (
               <div className="mcard" key={m.key}>
                 <div className="em">{m.emoji}</div>
@@ -72,14 +96,38 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           })}
         </div>
 
+        <div className="card">
+          <div className="rowhead" style={{ marginBottom: 10 }}>
+            <div className="h2" style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="drop" style={{ color: 'var(--fat)', width: 18, height: 18 }} />Вода
+            </div>
+            <div className="stepper">
+              <b onClick={() => changeWater(-1)}><Icon name="minus" /></b>
+              <span className="sv">{d.water.done} / {d.water.goal}</span>
+              <b onClick={() => changeWater(1)}><Icon name="plus" /></b>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {Array.from({ length: d.water.goal }).map((_, i) => (
+              <span key={i} style={{ flex: 1, height: 22, borderRadius: 6, background: i < d.water.done ? 'var(--fat)' : 'var(--fat-soft)' }} />
+            ))}
+          </div>
+        </div>
+
         <div className="rowhead">
           <div className="h2">Приёмы пищи</div>
           <button className="add" onClick={() => onNavigate('add')}><Icon name="plus" /></button>
         </div>
 
-        {d.meals.map((meal, i) => (
-          <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} />
-        ))}
+        {d.meals.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', color: 'var(--sub)', fontWeight: 800, padding: '22px 18px' }}>
+            Пока пусто. Добавь первый приём 👇
+          </div>
+        ) : (
+          d.meals.map((meal, i) => (
+            <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)} />
+          ))
+        )}
       </div>
 
       <BottomNav active="today" onNavigate={onNavigate} />
@@ -87,9 +135,9 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   )
 }
 
-function MealCard({ meal, bg }: { meal: Meal; bg: string }) {
+function MealCard({ meal, bg, onDelete }: { meal: Meal; bg: string; onDelete: () => void }) {
   return (
-    <button className="meal">
+    <button className="meal" onClick={onDelete}>
       <div className="thumb" style={{ background: bg }}>{meal.emoji}</div>
       <div className="mm">
         <div className="nm">{meal.name}</div>

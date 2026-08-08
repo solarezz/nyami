@@ -7,8 +7,9 @@ import { AddFood } from './screens/AddFood'
 import { Result } from './screens/Result'
 import { Coach } from './screens/Coach'
 import { Progress } from './screens/Progress'
+import { Profile } from './screens/Profile'
 
-export type Screen = 'onboarding' | 'today' | 'add' | 'result' | 'coach' | 'progress'
+export type Screen = 'onboarding' | 'today' | 'add' | 'result' | 'coach' | 'progress' | 'profile'
 
 export function App() {
   return (
@@ -22,11 +23,17 @@ export function App() {
 }
 
 function Root() {
-  const { loading, error } = useData()
-  const [screen, setScreen] = useState<Screen>('today')
+  const { loading, error, onboarded } = useData()
 
   if (loading) return <Splash text="Загружаем…" />
   if (error) return <Splash text={`Не удалось подключиться к серверу.\n${error}`} />
+
+  return <Router startOnboarding={!onboarded} />
+}
+
+function Router({ startOnboarding }: { startOnboarding: boolean }) {
+  // Новый пользователь начинает с онбординга, остальные — с «Сегодня».
+  const [screen, setScreen] = useState<Screen>(startOnboarding ? 'onboarding' : 'today')
 
   return (
     <>
@@ -36,6 +43,7 @@ function Root() {
       {screen === 'result' && <Result onNavigate={setScreen} />}
       {screen === 'coach' && <Coach onNavigate={setScreen} />}
       {screen === 'progress' && <Progress onNavigate={setScreen} />}
+      {screen === 'profile' && <Profile onNavigate={setScreen} />}
     </>
   )
 }

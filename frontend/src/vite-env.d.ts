@@ -20,6 +20,7 @@ interface TelegramWebApp {
     impactOccurred: (style: 'light' | 'medium' | 'heavy') => void
     selectionChanged: () => void
   }
+  showConfirm?: (message: string, cb: (ok: boolean) => void) => void
 }
 
 interface Window {

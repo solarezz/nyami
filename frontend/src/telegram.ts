@@ -24,3 +24,12 @@ export function haptic(style: 'light' | 'medium' | 'heavy' = 'light'): void {
 export function getTelegramUser() {
   return window.Telegram?.WebApp.initDataUnsafe.user ?? null
 }
+
+// Подтверждение действия: нативное в Telegram, иначе стандартный confirm.
+export function showConfirm(message: string): Promise<boolean> {
+  const tg = window.Telegram?.WebApp
+  if (tg?.showConfirm) {
+    return new Promise((resolve) => tg.showConfirm!(message, resolve))
+  }
+  return Promise.resolve(window.confirm(message))
+}

@@ -1,4 +1,4 @@
-import { pgTable, bigint, text, integer, real, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { pgTable, bigint, text, integer, real, timestamp, uuid, boolean, primaryKey } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   telegramId: bigint('telegram_id', { mode: 'number' }).primaryKey(),
@@ -15,7 +15,23 @@ export const users = pgTable('users', {
   fat: integer('fat').notNull().default(60),
   carbs: integer('carbs').notNull().default(190),
   streak: integer('streak').notNull().default(0),
+  onboarded: boolean('onboarded').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+// Вода по дням (стаканы). PK — пользователь + дата.
+export const days = pgTable('days', {
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
+  date: text('date').notNull(), // YYYY-MM-DD
+  water: integer('water').notNull().default(0),
+}, (t) => ({ pk: primaryKey({ columns: [t.telegramId, t.date] }) }))
+
+// Замеры веса.
+export const weights = pgTable('weights', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
+  weightKg: real('weight_kg').notNull(),
+  at: timestamp('at').notNull().defaultNow(),
 })
 
 export const meals = pgTable('meals', {
