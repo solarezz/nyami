@@ -8,13 +8,27 @@ export function initTelegram(): void {
   tg.ready()
   tg.expand()
   applyTheme(tg.colorScheme)
+  applySafeArea()
 
   // Реагируем на смену темы прямо в Telegram.
   tg.onEvent('themeChanged', () => applyTheme(tg.colorScheme))
+  // Отступ сверху под панель Telegram (кнопки закрыть/меню в развёрнутом режиме).
+  tg.onEvent('safeAreaChanged', applySafeArea)
+  tg.onEvent('contentSafeAreaChanged', applySafeArea)
+  tg.onEvent('viewportChanged', applySafeArea)
 }
 
 function applyTheme(scheme: 'light' | 'dark'): void {
   document.documentElement.setAttribute('data-theme', scheme)
+}
+
+// Верхний безопасный отступ = зона устройства (чёлка) + зона UI Telegram.
+function applySafeArea(): void {
+  const tg = window.Telegram?.WebApp
+  const top = (tg?.safeAreaInset?.top ?? 0) + (tg?.contentSafeAreaInset?.top ?? 0)
+  const root = document.documentElement
+  if (top > 0) root.style.setProperty('--tg-safe-top', `${top}px`)
+  else root.style.removeProperty('--tg-safe-top')
 }
 
 export function haptic(style: 'light' | 'medium' | 'heavy' = 'light'): void {

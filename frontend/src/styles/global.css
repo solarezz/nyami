@@ -20,7 +20,7 @@ body{margin:0;background:var(--scr);color:var(--ink);font-family:var(--round);-w
 button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit;}
 
 .app{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;}
-.screen{flex:1;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px 0;}
+.screen{flex:1;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;padding:calc(12px + var(--tg-safe-top, env(safe-area-inset-top))) 16px 0;}
 .screen.gap{gap:12px;}
 .scrollarea{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:11px;padding-bottom:16px;-webkit-overflow-scrolling:touch;}
 .scrollarea::-webkit-scrollbar{display:none;}
