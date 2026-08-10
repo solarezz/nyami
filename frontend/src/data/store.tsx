@@ -16,6 +16,7 @@ interface DataState {
   setPending: (r: Recognition | null) => void
   refresh: () => Promise<void>
   recognize: (req: RecognizeRequest) => Promise<Recognition>
+  recognizeBarcode: (code: string) => Promise<Recognition>
   addMeal: (meal: AddMealRequest) => Promise<void>
   deleteMeal: (id: string) => Promise<void>
   setWater: (glasses: number) => Promise<void>
@@ -55,6 +56,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return result
   }, [])
 
+  const recognizeBarcode = useCallback(async (code: string) => {
+    const result = await api.getByBarcode(code)
+    setPending(result)
+    return result
+  }, [])
+
   const addMeal = useCallback(async (meal: AddMealRequest) => {
     await api.addMeal(meal)
     setDay(await api.getDay())
@@ -86,7 +93,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{
       me, day, week, onboarded: me?.onboarded ?? false, loading, error, pending, setPending,
-      refresh, recognize, addMeal, deleteMeal, setWater, updateProfile, askCoach,
+      refresh, recognize, recognizeBarcode, addMeal, deleteMeal, setWater, updateProfile, askCoach,
     }}>
       {children}
     </Ctx.Provider>

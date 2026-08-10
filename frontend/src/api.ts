@@ -38,5 +38,6 @@ export const api = {
   setWater: (glasses: number) => req<{ done: number }>('/api/water', { method: 'POST', body: JSON.stringify({ glasses }) }),
   getFrequent: () => req<FrequentMeal[]>('/api/frequent'),
   recognize: (body: RecognizeRequest) => req<Recognition>('/api/recognize', { method: 'POST', body: JSON.stringify(body) }),
+  getByBarcode: (code: string) => req<Recognition>(`/api/barcode/${encodeURIComponent(code)}`),
   coach: (message: string) => req<CoachResponse>('/api/coach', { method: 'POST', body: JSON.stringify({ message }) }),
 }

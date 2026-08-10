@@ -1,10 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 import type {
-  MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest,
+  MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
 import type { NyamiRepo } from './repo.js'
 import { getAi } from './ai/index.js'
+import { offByBarcode } from './ai/off.js'
 
 export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
   const ai = getAi()
@@ -45,6 +46,23 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     // Распознавание еды: фото или текст → КБЖУ (через AI-провайдера).
     api.post<{ Body: RecognizeRequest }>('/api/recognize', async (req) => ai.recognize(req.body))
+
+    // Штрихкод → точные данные продукта из Open Food Facts.
+    api.get<{ Params: { code: string } }>('/api/barcode/:code', async (req, reply) => {
+      const p = await offByBarcode(req.params.code)
+      if (!p) return reply.code(404).send({ error: 'not_found' })
+      const grams = p.servingG && p.servingG > 0 ? Math.round(p.servingG) : 100
+      const f = grams / 100
+      const reco: Recognition = {
+        name: p.name, emoji: '🍽️', grams,
+        kcal: Math.round(p.per100kcal * f),
+        protein: Math.round(p.per100protein * f),
+        carbs: Math.round(p.per100carbs * f),
+        fat: Math.round(p.per100fat * f),
+        confidence: 0.95, extras: [],
+      }
+      return reco
+    })
 
     // Коуч: отвечает с учётом контекста дня пользователя.
     api.post<{ Body: CoachRequest }>('/api/coach', async (req): Promise<CoachResponse> => {

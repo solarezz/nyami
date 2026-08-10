@@ -1,0 +1,18 @@
+[
+  { "id": "banan", "text": "банан 1 шт", "per100kcal": 89 },
+  { "id": "yabloko", "text": "яблоко", "per100kcal": 52 },
+  { "id": "grechka", "text": "гречка отварная", "per100kcal": 110 },
+  { "id": "ris", "text": "рис отварной белый", "per100kcal": 130 },
+  { "id": "ovsyanka", "text": "овсяная каша на воде", "per100kcal": 88 },
+  { "id": "kur-grudka", "text": "куриная грудка отварная", "per100kcal": 165 },
+  { "id": "tvorog5", "text": "творог 5%", "per100kcal": 121 },
+  { "id": "borsch", "text": "борщ со сметаной", "per100kcal": 58 },
+  { "id": "hleb-rzh", "text": "хлеб ржаной", "per100kcal": 210 },
+  { "id": "syr-ross", "text": "сыр российский", "per100kcal": 363 },
+  { "id": "plombir-glaz", "text": "пломбир в шоколадной глазури", "per100kcal": 310 },
+  { "id": "yaichnica", "text": "яичница из двух яиц, жаренная на масле", "per100kcal": 190 },
+  { "id": "kartoshka-fri", "text": "картофель фри", "per100kcal": 312 },
+  { "id": "cola", "text": "кока-кола", "per100kcal": 42 },
+  { "id": "olivie", "text": "салат оливье с майонезом", "per100kcal": 198 },
+  { "id": "plov", "text": "плов с бараниной", "per100kcal": 205 }
+]

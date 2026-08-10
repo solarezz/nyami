@@ -3,15 +3,18 @@ import { Icon } from '../components/Icons'
 import { api } from '../api'
 import { useData } from '../data/store'
 import { fileToDataUrl } from '../utils/image'
+import { decodeBarcode } from '../utils/barcode'
+import { showAlert } from '../telegram'
 import type { Screen } from '../App'
 import type { FrequentMeal } from '../types'
 
 export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { recognize, addMeal } = useData()
+  const { recognize, recognizeBarcode, addMeal } = useData()
   const [text, setText] = useState('')
-  const [busy, setBusy] = useState<false | 'text' | 'photo' | 'quick'>(false)
+  const [busy, setBusy] = useState<false | 'text' | 'photo' | 'quick' | 'barcode'>(false)
   const [frequent, setFrequent] = useState<FrequentMeal[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
+  const barcodeRef = useRef<HTMLInputElement>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -58,6 +61,26 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     }
   }
 
+  const onBarcode = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || busy) return
+    setBusy('barcode')
+    try {
+      const code = await decodeBarcode(file)
+      if (!code) {
+        showAlert('Не разглядел штрихкод — сфоткай его крупнее и ровнее, при хорошем свете.')
+        setBusy(false)
+        return
+      }
+      await recognizeBarcode(code)
+      onNavigate('result')
+    } catch {
+      showAlert('Такого продукта нет в базе Open Food Facts. Добавь по фото или тексту.')
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="screen gap fade">
       <div className="topbar">
@@ -65,6 +88,7 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} hidden />
+      <input ref={barcodeRef} type="file" accept="image/*" capture="environment" onChange={onBarcode} hidden />
 
       <div className="scrollarea">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
@@ -78,6 +102,14 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             <Icon name="pencil" style={{ color: 'var(--accent)' }} /><div className="ol">Описать словами</div>
           </button>
         </div>
+
+        <button
+          className="optcard" style={{ background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, flexDirection: 'row', padding: '14px' }}
+          onClick={() => barcodeRef.current?.click()} disabled={busy !== false}
+        >
+          <Icon name="barcode" style={{ color: 'var(--accent)' }} />
+          <span className="ol" style={{ margin: 0 }}>{busy === 'barcode' ? 'Сканирую…' : 'Сканировать штрихкод'}</span>
+        </button>
 
         <div className="tiny">Что ты съел</div>
         <textarea ref={textRef} className="inputcard" rows={2} value={text} placeholder="Напиши блюдо: «тарелка борща со сметаной»…" onChange={(e) => setText(e.target.value)} />
