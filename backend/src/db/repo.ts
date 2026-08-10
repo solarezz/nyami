@@ -19,8 +19,11 @@ export function createDrizzleRepo(): NyamiRepo {
   async function ensureUser(userId: number): Promise<typeof users.$inferSelect> {
     const found = await database.select().from(users).where(eq(users.telegramId, userId)).limit(1)
     if (found[0]) return found[0]
-    const inserted = await database.insert(users).values({ telegramId: userId }).returning()
-    return inserted[0]
+    // Первый запуск: /api/me,/day,/week идут параллельно и создают юзера одновременно.
+    // onConflictDoNothing делает вставку идемпотентной — иначе дубль первичного ключа → 500.
+    await database.insert(users).values({ telegramId: userId }).onConflictDoNothing()
+    const after = await database.select().from(users).where(eq(users.telegramId, userId)).limit(1)
+    return after[0]
   }
 
   return {

@@ -34,7 +34,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<Recognition | null>(null)
 
   const refresh = useCallback(async () => {
-    const [m, d, w] = await Promise.all([api.getMe(), api.getDay(), api.getWeek()])
+    // Сначала getMe — гарантированно заводит юзера, потом остальное параллельно.
+    // (плюс на бэке ensureUser идемпотентен — двойная защита от гонки первого запуска)
+    const m = await api.getMe()
+    const [d, w] = await Promise.all([api.getDay(), api.getWeek()])
     setMe(m)
     setDay(d)
     setWeek(w)
