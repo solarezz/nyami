@@ -3,11 +3,12 @@ import { Icon } from './Icons'
 
 // Живой сканер штрихкода: камера + непрерывное распознавание (ZXing).
 export function BarcodeScanner({
-  onDetected, onClose, onError,
+  onDetected, onClose, onError, onManual,
 }: {
   onDetected: (code: string) => void
   onClose: () => void
   onError: () => void
+  onManual: () => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -19,7 +20,6 @@ export function BarcodeScanner({
       try {
         const { BrowserMultiFormatReader } = await import('@zxing/browser')
         const reader = new BrowserMultiFormatReader()
-        // facingMode environment — задняя камера.
         controls = await reader.decodeFromConstraints(
           { video: { facingMode: 'environment' } },
           videoRef.current!,
@@ -43,10 +43,11 @@ export function BarcodeScanner({
 
   return (
     <div className="scanner">
-      <video ref={videoRef} className="scanner-video" playsInline muted />
+      <video ref={videoRef} className="scanner-video" autoPlay playsInline muted />
       <div className="scanner-frame" />
       <div className="scanner-hint">Наведи камеру на штрихкод</div>
       <button className="scanner-close" onClick={onClose} aria-label="Закрыть"><Icon name="x" /></button>
+      <button className="scanner-manual" onClick={onManual}>Не сканируется? Сфоткать этикетку</button>
     </div>
   )
 }
