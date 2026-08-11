@@ -6,6 +6,7 @@ import { authHook } from './auth.js'
 import type { NyamiRepo } from './repo.js'
 import { getAi } from './ai/index.js'
 import { offByBarcode } from './ai/off.js'
+import { fatsecretByBarcode } from './ai/fatsecret.js'
 
 export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
   const ai = getAi()
@@ -49,7 +50,8 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     // Штрихкод → точные данные продукта из Open Food Facts.
     api.get<{ Params: { code: string } }>('/api/barcode/:code', async (req, reply) => {
-      const p = await offByBarcode(req.params.code)
+      // Open Food Facts → FatSecret (шире по RU/BY) → 404 (фронт предложит фото этикетки).
+      const p = (await offByBarcode(req.params.code)) ?? (await fatsecretByBarcode(req.params.code))
       if (!p) return reply.code(404).send({ error: 'not_found' })
       const grams = p.servingG && p.servingG > 0 ? Math.round(p.servingG) : 100
       const f = grams / 100

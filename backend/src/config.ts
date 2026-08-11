@@ -16,6 +16,10 @@ export const config = {
   groqVisionModel: process.env.GROQ_VISION_MODEL ?? 'qwen/qwen3.6-27b',
   groqTextModel: process.env.GROQ_TEXT_MODEL ?? 'llama-3.3-70b-versatile',
 
+  // FatSecret Platform API (OAuth2 client credentials) — большая база по штрихкодам.
+  fatsecretId: process.env.FATSECRET_CLIENT_ID ?? '',
+  fatsecretSecret: process.env.FATSECRET_CLIENT_SECRET ?? '',
+
   /** В проде авторизация Telegram строгая; в dev без валидного initData пускаем тестового юзера. */
   isProduction: process.env.NODE_ENV === 'production',
 }
