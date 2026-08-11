@@ -15,6 +15,13 @@
       "when": 1786196283168,
       "tag": "0001_sturdy_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786444037186,
+      "tag": "0002_petite_rhodey",
+      "breakpoints": true
     }
   ]
 }

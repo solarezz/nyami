@@ -121,6 +121,14 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 
 .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;box-shadow:var(--sh);background:linear-gradient(150deg,var(--accent2),var(--accent));display:grid;place-items:center;color:#fff;font-weight:900;font-size:26px;}
 
+/* ---- живой сканер штрихкода ---- */
+.scanner{position:fixed;inset:0;z-index:100;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.scanner-video{width:100%;height:100%;object-fit:cover;}
+.scanner-frame{position:absolute;width:80%;max-width:340px;aspect-ratio:1.7;border:3px solid rgba(255,255,255,.92);border-radius:16px;box-shadow:0 0 0 100vmax rgba(0,0,0,.5);}
+.scanner-hint{position:absolute;bottom:15%;color:#fff;font-weight:800;font-size:15px;text-shadow:0 1px 6px rgba(0,0,0,.7);}
+.scanner-close{position:absolute;top:calc(14px + var(--tg-safe-top, env(safe-area-inset-top)));right:16px;width:42px;height:42px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;}
+.scanner-close .ic{width:22px;height:22px;stroke-width:2.4;}
+
 /* ---- тёмная тема: отделяем поверхности от почти-чёрного фона ---- */
 :root{--card-border:transparent;}
 @media (prefers-color-scheme:dark){:root{--card-border:rgba(255,255,255,.09);--card:#23271f;}}

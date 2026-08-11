@@ -42,8 +42,10 @@ const RECOGNIZE_SYSTEM = `Ты — точный нутрициолог. Опре
 КАК СЧИТАТЬ ТОЧНО (это важно):
 1) Оцени ПЛОТНОСТЬ энергии — ккал на 100 г — именно для ЭТОГО продукта и способа приготовления.
    Сильно повышают калорийность и ЖИРЫ (не занижай их!): жарка на масле, шоколадная глазурь,
-   сливки, сметана, майонез, сыр, орехи, сахар, сладкие соусы. Пример: пломбир в шоколадной
-   глазури ≈ 300–320 ккал/100 г, жаренное на масле +20–40% к калориям.
+   сливки, сметана, майонез, сыр, орехи, сахар, сладкие соусы. Ориентиры:
+   пломбир в шок. глазури ≈ 300–320; блины/оладьи на масле ≈ 200–230; жарка на сковороде +20–40%.
+   ГЛУБОКАЯ ЖАРКА ВО ФРИТЮРЕ впитывает много масла — считай щедро: картофель фри ≈ 290–320,
+   наггетсы/чебуреки/пончики ≈ 260–320 ккал/100 г. Яичница на масле ≈ 190–210.
 2) Отдельно оцени ВЕС порции в граммах. Типичные ориентиры: эскимо 70–80 г, банан 120 г,
    яблоко 150 г, тарелка супа 300–350 г, кусок хлеба 30 г, ломтик сыра 20 г.
 3) Если это УПАКОВАННЫЙ продукт и на фото ЧИТАЕТСЯ таблица «Пищевая ценность / на 100 г» —
@@ -143,7 +145,7 @@ export async function groqRecognize(input: RecognizeRequest): Promise<Recognitio
 
   const userContent: ChatContent = hasImage
     ? [
-        { type: 'text', text: 'Определи еду на фото и оцени КБЖУ. Если это упаковка с таблицей пищевой ценности — прочитай её.' },
+        { type: 'text', text: 'Определи еду на фото и оцени КБЖУ. Если это упаковка с таблицей пищевой ценности — прочитай её. Ответь ТОЛЬКО валидным JSON по схеме, без слов и пояснений.' },
         {
           type: 'image_url',
           image_url: {
@@ -155,17 +157,26 @@ export async function groqRecognize(input: RecognizeRequest): Promise<Recognitio
       ]
     : `Продукт/блюдо: ${input.text ?? ''}`
 
-  const raw = await groqChat(
-    [
-      { role: 'system', content: RECOGNIZE_SYSTEM },
-      { role: 'user', content: userContent },
-    ],
-    model,
-    // Vision-модель (qwen) — reasoning-модель: прячем <think>. Текстовая — строгий JSON-режим.
-    hasImage ? { reasoningFormat: 'hidden' } : { jsonMode: true },
-  )
-
-  const reco = coerceRaw(raw, input.text)
+  // Модель (особенно vision) иногда возвращает невалидный JSON — делаем 2 попытки.
+  let reco: RawReco | null = null
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 2 && !reco; attempt++) {
+    try {
+      const raw = await groqChat(
+        [
+          { role: 'system', content: RECOGNIZE_SYSTEM },
+          { role: 'user', content: userContent },
+        ],
+        model,
+        // Vision-модель (qwen) — reasoning-модель: прячем <think>. Текстовая — строгий JSON-режим.
+        hasImage ? { reasoningFormat: 'hidden' } : { jsonMode: true },
+      )
+      reco = coerceRaw(raw, input.text)
+    } catch (e) {
+      lastErr = e
+    }
+  }
+  if (!reco) throw new Error(`не удалось распознать: ${lastErr instanceof Error ? lastErr.message : lastErr}`)
 
   // Для упакованных продуктов уточняем калорийность/100 г из Open Food Facts.
   if (reco.packaged && reco.query) {

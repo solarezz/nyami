@@ -2,6 +2,8 @@
 
 export type MacroKey = 'protein' | 'fat' | 'carbs'
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
 export interface MacroProgress {
   eaten: number
   goal: number
@@ -12,6 +14,7 @@ export interface Meal {
   name: string
   emoji: string
   time: string
+  mealType: MealType
   kcal: number
   protein: number
   carbs: number

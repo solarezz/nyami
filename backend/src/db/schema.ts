@@ -43,5 +43,6 @@ export const meals = pgTable('meals', {
   protein: integer('protein').notNull().default(0),
   carbs: integer('carbs').notNull().default(0),
   fat: integer('fat').notNull().default(0),
+  mealType: text('meal_type').notNull().default('snack'),
   eatenAt: timestamp('eaten_at').notNull().defaultNow(),
 })

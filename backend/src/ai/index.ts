@@ -13,13 +13,10 @@ export interface Ai {
 export function getAi(): Ai {
   if (config.aiProvider === 'groq' && config.groqApiKey) {
     return {
+      // Распознавание НЕ откатываем на мок: лучше честно сообщить о неудаче,
+      // чем подсунуть неправильное блюдо. groqRecognize сам ретраит.
       async recognize(input) {
-        try {
-          return await groqRecognize(input)
-        } catch (e) {
-          console.error('[ai] groq recognize failed, fallback to mock:', e)
-          return mockRecognize()
-        }
+        return groqRecognize(input)
       },
       async coach(day, message) {
         try {

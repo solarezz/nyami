@@ -5,7 +5,7 @@ import { BottomNav } from '../components/BottomNav'
 import { useData } from '../data/store'
 import { haptic, showAlert } from '../telegram'
 import type { Screen } from '../App'
-import type { Meal } from '../types'
+import type { Meal, MealType } from '../types'
 
 const macroMeta = [
   { key: 'protein', emoji: '🍗', label: 'белки', color: 'var(--prot)', track: 'var(--prot-soft)' },
@@ -15,6 +15,12 @@ const macroMeta = [
 
 const thumbBg = ['var(--carb-soft)', 'var(--accent-soft)', 'var(--prot-soft)']
 const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+const MEAL_GROUPS: { type: MealType; label: string }[] = [
+  { type: 'breakfast', label: 'Завтрак' },
+  { type: 'lunch', label: 'Обед' },
+  { type: 'dinner', label: 'Ужин' },
+  { type: 'snack', label: 'Перекус' },
+]
 
 function weekDates() {
   const today = new Date()
@@ -133,9 +139,21 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             Пока пусто. Добавь первый приём 👇
           </div>
         ) : (
-          d.meals.map((meal, i) => (
-            <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)} />
-          ))
+          MEAL_GROUPS.map((g) => {
+            const items = d.meals.filter((m) => m.mealType === g.type)
+            if (items.length === 0) return null
+            const sum = items.reduce((s, m) => s + m.kcal, 0)
+            return (
+              <div key={g.type} style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                <div className="tiny" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{g.label}</span><span>{sum} ккал</span>
+                </div>
+                {items.map((meal, i) => (
+                  <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)} />
+                ))}
+              </div>
+            )
+          })
         )}
       </div>
 

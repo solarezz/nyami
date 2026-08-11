@@ -1,7 +1,7 @@
 import { and, eq, gte, asc, desc } from 'drizzle-orm'
-import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest } from '@nyami/shared'
+import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType } from '@nyami/shared'
 import {
-  type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey, topFrequent,
+  type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey, topFrequent, mealTypeForHour,
 } from '../repo.js'
 import { computeNorm } from '../nutrition.js'
 import { db, type Db } from './client.js'
@@ -106,7 +106,10 @@ export function createDrizzleRepo(): NyamiRepo {
 
     async addMeal(userId, req: AddMealRequest) {
       await ensureUser(userId)
-      const inserted = await database.insert(meals).values({ telegramId: userId, ...req }).returning()
+      const inserted = await database
+        .insert(meals)
+        .values({ telegramId: userId, mealType: mealTypeForHour(new Date().getHours()), ...req })
+        .returning()
       return toMeal(inserted[0])
     },
 
@@ -136,6 +139,7 @@ export function createDrizzleRepo(): NyamiRepo {
 function toMeal(m: typeof meals.$inferSelect): Meal {
   return {
     id: m.id, name: m.name, emoji: m.emoji, time: hhmm(m.eatenAt),
+    mealType: m.mealType as MealType,
     kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
   }
 }

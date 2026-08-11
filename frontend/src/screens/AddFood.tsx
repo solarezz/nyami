@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icons'
+import { BarcodeScanner } from '../components/BarcodeScanner'
 import { api } from '../api'
 import { useData } from '../data/store'
 import { fileToDataUrl } from '../utils/image'
@@ -13,6 +14,7 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState<false | 'text' | 'photo' | 'quick' | 'barcode'>(false)
   const [frequent, setFrequent] = useState<FrequentMeal[]>([])
+  const [scanning, setScanning] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const barcodeRef = useRef<HTMLInputElement>(null)
   const textRef = useRef<HTMLTextAreaElement>(null)
@@ -43,6 +45,7 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       await recognize({ text })
       onNavigate('result')
     } catch {
+      showAlert('Не смог распознать. Сформулируй иначе или добавь фото/штрихкод.')
       setBusy(false)
     }
   }
@@ -57,10 +60,35 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       await recognize({ imageBase64 })
       onNavigate('result')
     } catch {
+      showAlert('Не смог распознать это фото. Сфоткай поближе и при хорошем свете, или опиши текстом.')
       setBusy(false)
     }
   }
 
+  // Общая обработка найденного штрихкода (из живого сканера или из фото-фолбэка).
+  const processBarcode = async (code: string) => {
+    setBusy('barcode')
+    try {
+      await recognizeBarcode(code)
+      onNavigate('result')
+    } catch {
+      showAlert('Такого продукта нет в базе Open Food Facts. Добавь по фото или тексту.')
+      setBusy(false)
+    }
+  }
+
+  const onScanDetected = (code: string) => {
+    setScanning(false)
+    processBarcode(code)
+  }
+
+  // Камера недоступна (например, iOS-вебвью) → откат на съёмку фото штрихкода.
+  const onScanError = () => {
+    setScanning(false)
+    barcodeRef.current?.click()
+  }
+
+  // Фолбэк: декодируем штрихкод из сделанного фото.
   const onBarcode = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -73,16 +101,20 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         setBusy(false)
         return
       }
-      await recognizeBarcode(code)
-      onNavigate('result')
+      setBusy(false)
+      await processBarcode(code)
     } catch {
-      showAlert('Такого продукта нет в базе Open Food Facts. Добавь по фото или тексту.')
+      showAlert('Не получилось прочитать штрихкод. Попробуй ещё раз.')
       setBusy(false)
     }
   }
 
   return (
-    <div className="screen gap fade">
+    <>
+      {scanning && (
+        <BarcodeScanner onDetected={onScanDetected} onClose={() => setScanning(false)} onError={onScanError} />
+      )}
+      <div className="screen gap fade">
       <div className="topbar">
         <div className="h2">Добавить еду</div>
       </div>
@@ -105,7 +137,7 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
         <button
           className="optcard" style={{ background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, flexDirection: 'row', padding: '14px' }}
-          onClick={() => barcodeRef.current?.click()} disabled={busy !== false}
+          onClick={() => setScanning(true)} disabled={busy !== false}
         >
           <Icon name="barcode" style={{ color: 'var(--accent)' }} />
           <span className="ol" style={{ margin: 0 }}>{busy === 'barcode' ? 'Сканирую…' : 'Сканировать штрихкод'}</span>
@@ -133,6 +165,7 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         </button>
         <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>Powered by Groq · оценка ±15%</div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

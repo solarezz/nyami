@@ -1,9 +1,17 @@
 import type {
-  DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal,
+  DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType,
 } from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
 
 export const WATER_GOAL = 8
+
+/** Тип приёма пищи по часу дня. */
+export function mealTypeForHour(h: number): MealType {
+  if (h >= 4 && h < 11) return 'breakfast'
+  if (h >= 11 && h < 16) return 'lunch'
+  if (h >= 16 && h < 22) return 'dinner'
+  return 'snack'
+}
 
 // Абстракция хранилища. Мок (in-memory) и Postgres (Drizzle) реализуют один интерфейс.
 export interface NyamiRepo {
@@ -124,6 +132,7 @@ export function createMockRepo(): NyamiRepo {
       const meal: StoredMeal = {
         id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
         time: hhmm(now),
+        mealType: mealTypeForHour(now.getHours()),
         eatenAt: now.toISOString(),
         ...req,
       }
