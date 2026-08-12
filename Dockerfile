@@ -25,6 +25,10 @@ COPY --from=build /app/backend/package.json ./backend/package.json
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=build /app/backend/drizzle ./backend/drizzle
 COPY --from=build /app/backend/drizzle.config.ts ./backend/drizzle.config.ts
+# исходники нужны для служебных скриптов на сервере (npm run notify / eval)
+COPY --from=build /app/backend/src ./backend/src
+COPY --from=build /app/backend/scripts ./backend/scripts
+COPY --from=build /app/backend/eval ./backend/eval
 
 WORKDIR /app/backend
 EXPOSE 8787

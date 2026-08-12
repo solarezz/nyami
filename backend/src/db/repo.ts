@@ -133,6 +133,11 @@ export function createDrizzleRepo(): NyamiRepo {
         .orderBy(desc(meals.eatenAt)).limit(200)
       return topFrequent(rows)
     },
+
+    async getOnboardedUserIds() {
+      const rows = await database.select({ id: users.telegramId }).from(users).where(eq(users.onboarded, true))
+      return rows.map((r) => r.id)
+    },
   }
 }
 

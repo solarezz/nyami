@@ -24,6 +24,8 @@ export interface NyamiRepo {
   deleteMeal(userId: number, mealId: string): Promise<void>
   setWater(userId: number, glasses: number): Promise<number>
   getFrequent(userId: number): Promise<FrequentMeal[]>
+  /** ID всех прошедших онбординг пользователей — для рассылок. */
+  getOnboardedUserIds(): Promise<number[]>
 }
 
 // Топ часто добавляемых блюд из списка приёмов (группировка по названию).
@@ -153,6 +155,10 @@ export function createMockRepo(): NyamiRepo {
 
     async getFrequent(u) {
       return topFrequent(getMeals(u))
+    },
+
+    async getOnboardedUserIds() {
+      return [...onboardedSet]
     },
   }
 }
