@@ -29,6 +29,8 @@ services:
       PORT: 8787
       BOT_TOKEN: ${BOT_TOKEN}
       GROQ_API_KEY: ${GROQ_API_KEY}
+      FATSECRET_CLIENT_ID: ${FATSECRET_CLIENT_ID:-}
+      FATSECRET_CLIENT_SECRET: ${FATSECRET_CLIENT_SECRET:-}
       DATABASE_URL: postgresql://nyami:${DB_PASSWORD}@db:5432/nyami
       WEB_ORIGIN: https://nyami.solarezz.dev
     # применяем миграции и стартуем
