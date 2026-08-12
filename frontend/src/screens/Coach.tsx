@@ -1,21 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icons'
 import { Ring } from '../components/Ring'
 import { useData } from '../data/store'
+import { api } from '../api'
 import { haptic } from '../telegram'
 import type { Screen } from '../App'
-import type { ChatMessage } from '../types'
+import type { ChatMessage, DaySummary } from '../types'
 
 export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, askCoach } = useData()
-  const left = day ? day.goalKcal - day.eatenKcal : 0
-  const frac = day ? day.eatenKcal / day.goalKcal : 0
+  const { askCoach } = useData()
+  // Коуч всегда про СЕГОДНЯ (независимо от выбранного дня на «Сегодня»).
+  const [today, setToday] = useState<DaySummary | null>(null)
+  const left = today ? today.goalKcal - today.eatenKcal : 0
+  const frac = today ? today.eatenKcal / today.goalKcal : 0
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'greet', role: 'coach', text: `Привет! На сегодня осталось **${left} ккал**. Спрашивай, если сомневаешься 🙂` },
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    api.getDay().then((d) => {
+      setToday(d)
+      const l = d.goalKcal - d.eatenKcal
+      setMessages([{ id: 'greet', role: 'coach', text: `Привет! На сегодня осталось **${l} ккал**. Спрашивай, если сомневаешься 🙂` }])
+    }).catch(() => {
+      setMessages([{ id: 'greet', role: 'coach', text: 'Привет! Спрашивай про питание — помогу 🙂' }])
+    })
+  }, [])
 
   const send = async () => {
     const text = input.trim()

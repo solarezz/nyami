@@ -1,6 +1,6 @@
 import cron from 'node-cron'
 import { config } from './config.js'
-import type { NyamiRepo } from './repo.js'
+import { type NyamiRepo, todayKey } from './repo.js'
 
 const TZ = 'Europe/Moscow'
 
@@ -28,7 +28,7 @@ export async function sendMessage(chatId: number, text: string): Promise<void> {
 
 /** Вечернее напоминание — только тем, кто сегодня ещё ничего не записал. */
 export async function runDailyFor(repo: NyamiRepo, userId: number): Promise<boolean> {
-  const day = await repo.getToday(userId)
+  const day = await repo.getDay(userId, todayKey())
   if (day.meals.length > 0) return false
   await sendMessage(userId, '🍽 Ты сегодня ещё ничего не записал.\nОтметь приёмы, чтобы не потерять стрик!')
   return true
@@ -36,7 +36,7 @@ export async function runDailyFor(repo: NyamiRepo, userId: number): Promise<bool
 
 /** Недельный отчёт по данным пользователя. */
 export async function runWeeklyFor(repo: NyamiRepo, userId: number): Promise<void> {
-  const [week, day] = await Promise.all([repo.getWeek(userId), repo.getToday(userId)])
+  const [week, day] = await Promise.all([repo.getWeek(userId), repo.getDay(userId, todayKey())])
   const logged = week.days.filter((d) => d.kcal > 0)
   if (logged.length === 0) return // нечего показывать
 

@@ -2,7 +2,7 @@ import { Wordmark } from '../components/Wordmark'
 import { Icon } from '../components/Icons'
 import { RingStat } from '../components/Ring'
 import { BottomNav } from '../components/BottomNav'
-import { useData } from '../data/store'
+import { useData, todayStr } from '../data/store'
 import { haptic, showAlert } from '../telegram'
 import type { Screen } from '../App'
 import type { Meal, MealType } from '../types'
@@ -23,18 +23,28 @@ const MEAL_GROUPS: { type: MealType; label: string }[] = [
 ]
 
 function weekDates() {
-  const today = new Date()
-  const out: { dn: string; num: number; today: boolean }[] = []
+  const now = new Date()
+  const out: { dn: string; num: number; date: string; today: boolean }[] = []
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(today.getDate() - i)
-    out.push({ dn: i === 0 ? 'Сег' : WD[d.getDay()], num: d.getDate(), today: i === 0 })
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i))
+    out.push({
+      dn: i === 0 ? 'Сег' : WD[d.getUTCDay()],
+      num: d.getUTCDate(),
+      date: d.toISOString().slice(0, 10),
+      today: i === 0,
+    })
   }
   return out
 }
 
+const MONTHS_RU = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+function dateLabel(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number)
+  return `${d} ${MONTHS_RU[m - 1]}`
+}
+
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, deleteMeal, setWater } = useData()
+  const { day, deleteMeal, setWater, selectedDate, isToday, setSelectedDate } = useData()
   if (!day) return null
   const d = day
   const left = d.goalKcal - d.eatenKcal
@@ -63,12 +73,19 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
       <div className="week">
         {weekDates().map((w) => (
-          <div key={w.num} className={`wd${w.today ? ' on' : ''}`}>
+          <button key={w.date} className={`wd${w.date === selectedDate ? ' on' : ''}`} onClick={() => setSelectedDate(w.date)}>
             <span className="dn">{w.dn}</span>
             <span className="dc">{w.num}</span>
-          </div>
+          </button>
         ))}
       </div>
+
+      {!isToday && (
+        <div className="daybanner">
+          <span>📅 {dateLabel(selectedDate)} — прошлый день</span>
+          <button onClick={() => setSelectedDate(todayStr())}>Сегодня</button>
+        </div>
+      )}
 
       <div className="scrollarea">
         <div className="card calcard">

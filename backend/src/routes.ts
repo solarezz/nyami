@@ -3,10 +3,13 @@ import type {
   MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
-import type { NyamiRepo } from './repo.js'
+import { type NyamiRepo, todayKey } from './repo.js'
 import { getAi } from './ai/index.js'
 import { offByBarcode } from './ai/off.js'
 import { fatsecretByBarcode } from './ai/fatsecret.js'
+
+// Валидная дата YYYY-MM-DD или сегодня.
+const dayParam = (d: unknown): string => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayKey())
 
 export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
   const ai = getAi()
@@ -25,20 +28,23 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
     // Сохранение профиля (онбординг / редактирование). Норма считается на сервере.
     api.post<{ Body: UpdateProfileRequest }>('/api/profile', async (req) => repo.updateProfile(req.user.id, req.body))
 
-    api.get('/api/day', async (req) => repo.getToday(req.user.id))
+    api.get<{ Querystring: { date?: string } }>('/api/day', async (req) => repo.getDay(req.user.id, dayParam(req.query.date)))
 
     api.get('/api/week', async (req) => repo.getWeek(req.user.id))
 
-    api.post<{ Body: AddMealRequest }>('/api/meals', async (req) => repo.addMeal(req.user.id, req.body))
+    api.post<{ Body: AddMealRequest & { date?: string } }>('/api/meals', async (req) => {
+      const { date, ...meal } = req.body
+      return repo.addMeal(req.user.id, meal, dayParam(date))
+    })
 
     api.delete<{ Params: { id: string } }>('/api/meals/:id', async (req) => {
       await repo.deleteMeal(req.user.id, req.params.id)
       return { ok: true }
     })
 
-    // Вода: установить количество стаканов за сегодня.
-    api.post<{ Body: { glasses: number } }>('/api/water', async (req) => {
-      const done = await repo.setWater(req.user.id, req.body.glasses)
+    // Вода: установить количество стаканов за день (по умолчанию сегодня).
+    api.post<{ Body: { glasses: number; date?: string } }>('/api/water', async (req) => {
+      const done = await repo.setWater(req.user.id, req.body.glasses, dayParam(req.body.date))
       return { done }
     })
 
@@ -68,7 +74,7 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     // Коуч: отвечает с учётом контекста дня пользователя.
     api.post<{ Body: CoachRequest }>('/api/coach', async (req): Promise<CoachResponse> => {
-      const day = await repo.getToday(req.user.id)
+      const day = await repo.getDay(req.user.id, todayKey()) // коуч всегда про сегодня
       const reply = await ai.coach(day, req.body.message)
       return { reply }
     })

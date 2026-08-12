@@ -45,6 +45,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .wd .dc{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;background:var(--card);box-shadow:var(--sh);}
 .wd.on .dn{color:var(--ink);}
 .wd.on .dc{background:var(--ink);color:var(--scr);}
+.daybanner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:13px;border-radius:16px;padding:10px 8px 10px 14px;}
+.daybanner button{background:var(--accent);color:#fff;font-weight:800;font-size:13px;border-radius:999px;padding:7px 15px;flex:none;}
 
 .calcard{display:flex;align-items:center;gap:10px;}
 .calcard .l{flex:1;}

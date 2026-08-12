@@ -18,11 +18,12 @@ export interface NyamiRepo {
   getProfile(userId: number): Promise<Profile>
   isOnboarded(userId: number): Promise<boolean>
   updateProfile(userId: number, req: UpdateProfileRequest): Promise<Profile>
-  getToday(userId: number): Promise<DaySummary>
+  /** Сводка за конкретный день (date = YYYY-MM-DD). */
+  getDay(userId: number, date: string): Promise<DaySummary>
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
-  addMeal(userId: number, meal: AddMealRequest): Promise<Meal>
+  addMeal(userId: number, meal: AddMealRequest, date: string): Promise<Meal>
   deleteMeal(userId: number, mealId: string): Promise<void>
-  setWater(userId: number, glasses: number): Promise<number>
+  setWater(userId: number, glasses: number, date: string): Promise<number>
   getFrequent(userId: number): Promise<FrequentMeal[]>
   /** ID всех прошедших онбординг пользователей — для рассылок. */
   getOnboardedUserIds(): Promise<number[]>
@@ -43,6 +44,13 @@ const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
 export function todayKey(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+/** Границы суток по дате YYYY-MM-DD (UTC — как и ключи дней). */
+export function dayRange(date: string): { start: Date; end: Date } {
+  const start = new Date(`${date}T00:00:00.000Z`)
+  const end = new Date(start.getTime() + 24 * 3600 * 1000)
+  return { start, end }
 }
 
 /** Стрик: сколько дней подряд (включая сегодня) есть хотя бы один приём пищи. */
@@ -100,13 +108,14 @@ export function createMockRepo(): NyamiRepo {
       return p
     },
 
-    async getToday(u) {
-      const list = getMeals(u).filter((m) => m.eatenAt?.slice(0, 10) === todayKey())
+    async getDay(u, date) {
+      const all = getMeals(u)
+      const list = all.filter((m) => m.eatenAt.slice(0, 10) === date)
       const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
       const p = getProfileFor(u)
-      const dates = new Set(getMeals(u).map((m) => m.eatenAt!.slice(0, 10)))
+      const dates = new Set(all.map((m) => m.eatenAt.slice(0, 10)))
       return {
-        date: todayKey(),
+        date,
         eatenKcal: sum('kcal'),
         goalKcal: p.dailyKcal,
         macros: {
@@ -114,7 +123,7 @@ export function createMockRepo(): NyamiRepo {
           fat: { eaten: sum('fat'), goal: p.fat },
           carbs: { eaten: sum('carbs'), goal: p.carbs },
         },
-        water: { done: water.get(u)?.get(todayKey()) ?? 0, goal: WATER_GOAL },
+        water: { done: water.get(u)?.get(date) ?? 0, goal: WATER_GOAL },
         streak: computeStreak(dates),
         meals: list.map(stripInternal),
       }
@@ -129,13 +138,16 @@ export function createMockRepo(): NyamiRepo {
       return { days, weightSeries: w.length ? w.slice(-7) : [p.weightKg] }
     },
 
-    async addMeal(u, req) {
+    async addMeal(u, req, date) {
       const now = new Date()
+      // Для прошлого дня берём выбранную дату + текущее время суток.
+      const eatenAt = date === todayKey() ? now.toISOString() : `${date}T${now.toISOString().slice(11)}`
+      const when = new Date(eatenAt)
       const meal: StoredMeal = {
         id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
-        time: hhmm(now),
-        mealType: mealTypeForHour(now.getHours()),
-        eatenAt: now.toISOString(),
+        time: hhmm(when),
+        mealType: mealTypeForHour(when.getHours()),
+        eatenAt,
         ...req,
       }
       getMeals(u).push(meal)
@@ -146,10 +158,10 @@ export function createMockRepo(): NyamiRepo {
       meals.set(u, getMeals(u).filter((m) => m.id !== mealId))
     },
 
-    async setWater(u, glasses) {
+    async setWater(u, glasses, date) {
       const clamped = Math.max(0, Math.min(20, Math.round(glasses)))
       if (!water.has(u)) water.set(u, new Map())
-      water.get(u)!.set(todayKey(), clamped)
+      water.get(u)!.set(date, clamped)
       return clamped
     },
 

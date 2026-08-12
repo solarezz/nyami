@@ -1,8 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type {
   MeResponse, DaySummary, Recognition, AddMealRequest, RecognizeRequest, UpdateProfileRequest,
 } from '@nyami/shared'
 import { api, type WeekResponse } from '../api'
+
+// Дата в UTC — как ключи дней на бэке (чтобы клиент и сервер совпадали).
+export function todayStr(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 interface DataState {
   me: MeResponse | null
@@ -11,7 +16,9 @@ interface DataState {
   onboarded: boolean
   loading: boolean
   error: string | null
-  // Черновик распознавания, который передаётся с экрана «Добавить» в «Результат».
+  selectedDate: string
+  isToday: boolean
+  setSelectedDate: (date: string) => Promise<void>
   pending: Recognition | null
   setPending: (r: Recognition | null) => void
   refresh: () => Promise<void>
@@ -33,12 +40,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<Recognition | null>(null)
+  const [selectedDate, setSelectedDateState] = useState(todayStr())
+
+  // ref, чтобы колбэки всегда видели актуальную дату без пересоздания.
+  const dateRef = useRef(selectedDate)
+  dateRef.current = selectedDate
 
   const refresh = useCallback(async () => {
-    // Сначала getMe — гарантированно заводит юзера, потом остальное параллельно.
-    // (плюс на бэке ensureUser идемпотентен — двойная защита от гонки первого запуска)
     const m = await api.getMe()
-    const [d, w] = await Promise.all([api.getDay(), api.getWeek()])
+    const [d, w] = await Promise.all([api.getDay(dateRef.current), api.getWeek()])
     setMe(m)
     setDay(d)
     setWeek(w)
@@ -49,6 +59,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .catch((e) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'))
       .finally(() => setLoading(false))
   }, [refresh])
+
+  const setSelectedDate = useCallback(async (date: string) => {
+    setSelectedDateState(date)
+    dateRef.current = date
+    setDay(await api.getDay(date))
+  }, [])
 
   const recognize = useCallback(async (r: RecognizeRequest) => {
     const result = await api.recognize(r)
@@ -62,24 +78,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return result
   }, [])
 
-  const addMeal = useCallback(async (meal: AddMealRequest) => {
-    await api.addMeal(meal)
-    setDay(await api.getDay())
+  const reloadDayAndWeek = useCallback(async () => {
+    const [d, w] = await Promise.all([api.getDay(dateRef.current), api.getWeek()])
+    setDay(d)
+    setWeek(w)
   }, [])
+
+  const addMeal = useCallback(async (meal: AddMealRequest) => {
+    await api.addMeal(meal, dateRef.current)
+    await reloadDayAndWeek()
+  }, [reloadDayAndWeek])
 
   const deleteMeal = useCallback(async (id: string) => {
     await api.deleteMeal(id)
-    setDay(await api.getDay())
-  }, [])
+    await reloadDayAndWeek()
+  }, [reloadDayAndWeek])
 
   const setWater = useCallback(async (glasses: number) => {
-    const { done } = await api.setWater(glasses)
+    const { done } = await api.setWater(glasses, dateRef.current)
     setDay((d) => (d ? { ...d, water: { ...d.water, done } } : d))
   }, [])
 
   const updateProfile = useCallback(async (req: UpdateProfileRequest) => {
     await api.updateProfile(req)
-    const [m, d, w] = await Promise.all([api.getMe(), api.getDay(), api.getWeek()])
+    const [m, d, w] = await Promise.all([api.getMe(), api.getDay(dateRef.current), api.getWeek()])
     setMe(m)
     setDay(d)
     setWeek(w)
@@ -92,7 +114,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      me, day, week, onboarded: me?.onboarded ?? false, loading, error, pending, setPending,
+      me, day, week, onboarded: me?.onboarded ?? false, loading, error,
+      selectedDate, isToday: selectedDate === todayStr(), setSelectedDate,
+      pending, setPending,
       refresh, recognize, recognizeBarcode, addMeal, deleteMeal, setWater, updateProfile, askCoach,
     }}>
       {children}
