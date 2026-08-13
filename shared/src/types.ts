@@ -4,6 +4,8 @@ export type MacroKey = 'protein' | 'fat' | 'carbs'
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
+export type FastingProtocol = 'off' | '16:8' | '18:6' | '20:4' | 'omad'
+
 export interface MacroProgress {
   eaten: number
   goal: number
@@ -42,6 +44,13 @@ export interface Profile {
   protein: number
   fat: number
   carbs: number
+  fastingProtocol: FastingProtocol
+  eatStartHour: number // час начала окна еды (0–23)
+}
+
+export interface UpdateFastingRequest {
+  protocol: FastingProtocol
+  eatStartHour: number
 }
 
 export interface WeekDay {

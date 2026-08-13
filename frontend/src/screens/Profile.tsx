@@ -1,4 +1,5 @@
 import { ProfileForm } from '../components/ProfileForm'
+import { FastingSettings } from '../components/FastingSettings'
 import { BottomNav } from '../components/BottomNav'
 import { useData } from '../data/store'
 import { getTelegramUser } from '../telegram'
@@ -38,6 +39,8 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         </div>
 
         <ProfileForm initial={formInitial} submitLabel="Сохранить" onSubmit={submit} />
+
+        <FastingSettings />
       </div>
 
       <BottomNav active="profile" onNavigate={onNavigate} />

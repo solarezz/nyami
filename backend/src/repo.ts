@@ -1,5 +1,5 @@
 import type {
-  DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType,
+  DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType, UpdateFastingRequest,
 } from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
 
@@ -18,6 +18,7 @@ export interface NyamiRepo {
   getProfile(userId: number): Promise<Profile>
   isOnboarded(userId: number): Promise<boolean>
   updateProfile(userId: number, req: UpdateProfileRequest): Promise<Profile>
+  setFasting(userId: number, req: UpdateFastingRequest): Promise<Profile>
   /** Сводка за конкретный день (date = YYYY-MM-DD). */
   getDay(userId: number, date: string): Promise<DaySummary>
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
@@ -71,6 +72,7 @@ const defaultProfile: Profile = {
   sex: 'male', age: 28, heightCm: 178, weightKg: 82,
   activity: 'medium', goal: 'lose',
   dailyKcal: 1900, protein: 140, fat: 60, carbs: 190,
+  fastingProtocol: 'off', eatStartHour: 12,
 }
 
 type StoredMeal = Meal & { eatenAt: string }
@@ -99,12 +101,18 @@ export function createMockRepo(): NyamiRepo {
 
     async updateProfile(u, req) {
       const norm = computeNorm(req)
-      const p: Profile = { ...req, ...norm }
+      const p: Profile = { ...getProfileFor(u), ...req, ...norm }
       profiles.set(u, p)
       onboardedSet.add(u)
       const w = weights.get(u) ?? []
       w.push(req.weightKg)
       weights.set(u, w)
+      return p
+    },
+
+    async setFasting(u, req) {
+      const p: Profile = { ...getProfileFor(u), fastingProtocol: req.protocol, eatStartHour: req.eatStartHour }
+      profiles.set(u, p)
       return p
     },
 

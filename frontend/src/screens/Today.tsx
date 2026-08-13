@@ -1,6 +1,7 @@
 import { Wordmark } from '../components/Wordmark'
 import { Icon } from '../components/Icons'
 import { RingStat } from '../components/Ring'
+import { FastingCard } from '../components/FastingCard'
 import { BottomNav } from '../components/BottomNav'
 import { useData, todayStr } from '../data/store'
 import { haptic, showAlert } from '../telegram'
@@ -44,7 +45,7 @@ function dateLabel(iso: string): string {
 }
 
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, deleteMeal, setWater, selectedDate, isToday, setSelectedDate } = useData()
+  const { day, me, deleteMeal, setWater, selectedDate, isToday, setSelectedDate } = useData()
   if (!day) return null
   const d = day
   const left = d.goalKcal - d.eatenKcal
@@ -102,6 +103,10 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             label={<span style={{ fontSize: 27, color: 'var(--ink)' }}>{Math.round(eatenFrac * 100)}%</span>}
           />
         </div>
+
+        {isToday && me && me.profile.fastingProtocol !== 'off' && (
+          <FastingCard protocol={me.profile.fastingProtocol} eatStartHour={me.profile.eatStartHour} />
+        )}
 
         <div className="macros3">
           {macroMeta.map((m) => {

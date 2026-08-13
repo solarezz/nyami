@@ -1,6 +1,6 @@
 import type {
   MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile, FrequentMeal,
-  AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest,
+  AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest, UpdateFastingRequest,
 } from '@nyami/shared'
 
 // В проде фронт и API на одном домене → относительный путь. В dev — локальный бэкенд.
@@ -31,6 +31,7 @@ export interface WeekResponse {
 export const api = {
   getMe: () => req<MeResponse>('/api/me'),
   updateProfile: (body: UpdateProfileRequest) => req<Profile>('/api/profile', { method: 'POST', body: JSON.stringify(body) }),
+  setFasting: (body: UpdateFastingRequest) => req<Profile>('/api/fasting', { method: 'POST', body: JSON.stringify(body) }),
   getDay: (date?: string) => req<DaySummary>(`/api/day${date ? `?date=${date}` : ''}`),
   getWeek: () => req<WeekResponse>('/api/week'),
   addMeal: (body: AddMealRequest, date?: string) => req<Meal>('/api/meals', { method: 'POST', body: JSON.stringify({ ...body, date }) }),

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type {
-  MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition,
+  MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition, UpdateFastingRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
 import { type NyamiRepo, todayKey } from './repo.js'
@@ -27,6 +27,9 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     // Сохранение профиля (онбординг / редактирование). Норма считается на сервере.
     api.post<{ Body: UpdateProfileRequest }>('/api/profile', async (req) => repo.updateProfile(req.user.id, req.body))
+
+    // Интервальное голодание: протокол + час начала окна еды.
+    api.post<{ Body: UpdateFastingRequest }>('/api/fasting', async (req) => repo.setFasting(req.user.id, req.body))
 
     api.get<{ Querystring: { date?: string } }>('/api/day', async (req) => repo.getDay(req.user.id, dayParam(req.query.date)))
 

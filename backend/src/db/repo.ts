@@ -1,5 +1,5 @@
 import { and, eq, gte, lt, asc, desc } from 'drizzle-orm'
-import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType } from '@nyami/shared'
+import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType, FastingProtocol } from '@nyami/shared'
 import {
   type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey, dayRange, topFrequent, mealTypeForHour,
 } from '../repo.js'
@@ -38,6 +38,16 @@ export function createDrizzleRepo(): NyamiRepo {
         .where(eq(users.telegramId, userId))
         .returning()
       await database.insert(weights).values({ telegramId: userId, weightKg: req.weightKg })
+      return toProfile(updated[0])
+    },
+
+    async setFasting(userId, req) {
+      await ensureUser(userId)
+      const updated = await database
+        .update(users)
+        .set({ fastingProtocol: req.protocol, eatStartHour: req.eatStartHour })
+        .where(eq(users.telegramId, userId))
+        .returning()
       return toProfile(updated[0])
     },
 
@@ -159,5 +169,7 @@ function toProfile(u: typeof users.$inferSelect): Profile {
     protein: u.protein,
     fat: u.fat,
     carbs: u.carbs,
+    fastingProtocol: u.fastingProtocol as FastingProtocol,
+    eatStartHour: u.eatStartHour,
   }
 }

@@ -16,6 +16,8 @@ export const users = pgTable('users', {
   carbs: integer('carbs').notNull().default(190),
   streak: integer('streak').notNull().default(0),
   onboarded: boolean('onboarded').notNull().default(false),
+  fastingProtocol: text('fasting_protocol').notNull().default('off'),
+  eatStartHour: integer('eat_start_hour').notNull().default(12),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
