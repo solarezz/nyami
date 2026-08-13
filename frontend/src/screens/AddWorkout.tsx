@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Icon } from '../components/Icons'
+import { AiOverlay } from '../components/AiOverlay'
 import { useData } from '../data/store'
 import { haptic, showAlert } from '../telegram'
 import type { Screen } from '../App'
@@ -54,6 +55,7 @@ export function AddWorkout({ onNavigate }: { onNavigate: (s: Screen) => void }) 
 
   return (
     <div className="screen gap fade">
+      {busy && <AiOverlay text="Оцениваю тренировку…" />}
       <div className="topbar">
         <div className="h2">Добавить тренировку</div>
       </div>

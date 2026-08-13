@@ -45,7 +45,7 @@ function dateLabel(iso: string): string {
 }
 
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, me, deleteMeal, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate, setSelectedMealType } = useData()
+  const { day, week, me, deleteMeal, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate, setSelectedMealType } = useData()
   if (!day) return null
   const d = day
   // Сожжённые на тренировках калории увеличивают дневной остаток.
@@ -93,12 +93,17 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       </div>
 
       <div className="week">
-        {weekDates().map((w) => (
-          <button key={w.date} className={`wd${w.date === selectedDate ? ' on' : ''}`} onClick={() => setSelectedDate(w.date)}>
-            <span className="dn">{w.dn}</span>
-            <span className="dc">{w.num}</span>
-          </button>
-        ))}
+        {weekDates().map((w, i) => {
+          // week.days идёт в том же порядке (старые→новые); kcal>0 → в этот день был лог.
+          const logged = (week?.days[i]?.kcal ?? 0) > 0
+          return (
+            <button key={w.date} className={`wd${w.date === selectedDate ? ' on' : ''}`} onClick={() => setSelectedDate(w.date)}>
+              <span className="dn">{w.dn}</span>
+              <span className="dc">{w.num}</span>
+              <i className={`dot${logged ? ' on' : ''}`} />
+            </button>
+          )
+        })}
       </div>
 
       {!isToday && (
@@ -180,7 +185,17 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           <div className="h2">Приёмы пищи</div>
         </div>
 
-        {MEAL_GROUPS.map((g) => {
+        {d.meals.length === 0 && (
+          <button
+            className="card" onClick={() => addToGroup('breakfast')}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 18px', color: 'var(--sub)', fontWeight: 700, textAlign: 'center' }}
+          >
+            <span style={{ fontSize: 30 }}>🍳</span>
+            {isToday ? 'Добавь первый приём — фото, текст или штрихкод' : 'В этот день приёмов не было'}
+          </button>
+        )}
+
+        {d.meals.length > 0 && MEAL_GROUPS.map((g) => {
           const items = d.meals.filter((m) => m.mealType === g.type)
           const sum = items.reduce((s, m) => s + m.kcal, 0)
           return (

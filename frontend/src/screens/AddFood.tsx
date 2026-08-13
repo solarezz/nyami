@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icons'
+import { AiOverlay } from '../components/AiOverlay'
 import { BarcodeScanner } from '../components/BarcodeScanner'
 import { api } from '../api'
 import { useData } from '../data/store'
@@ -93,8 +94,11 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     openLabelPhoto()
   }
 
+  const overlayText = busy === 'photo' ? 'Распознаю блюдо по фото…' : busy === 'text' ? 'Распознаю блюдо…' : busy === 'barcode' ? 'Ищу товар…' : ''
+
   return (
     <>
+      {busy && busy !== 'quick' && <AiOverlay text={overlayText} />}
       {scanning && (
         <BarcodeScanner
           onDetected={onScanDetected}

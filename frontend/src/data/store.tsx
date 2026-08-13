@@ -108,6 +108,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setWeek(w)
   }, [])
 
+  // Вернулись в приложение (например, из чата бота) → подтягиваем свежие день+неделю.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') reloadDayAndWeek().catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [reloadDayAndWeek])
+
   const addMeal = useCallback(async (meal: AddMealRequest) => {
     // Тип из meal приоритетен; иначе — выбранная категория; иначе бэкенд решит по времени.
     await api.addMeal({ ...meal, mealType: meal.mealType ?? mealTypeRef.current ?? undefined }, dateRef.current)
