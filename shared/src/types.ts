@@ -64,6 +64,15 @@ export interface UpdateFastingRequest {
   eatStartHour: number
 }
 
+/** Запись замера веса (за сейчас; попадает в weightSeries). */
+export interface SetWeightRequest {
+  weightKg: number
+}
+
+export interface SetWeightResponse {
+  weightSeries: number[]
+}
+
 export interface WeekDay {
   label: string
   kcal: number

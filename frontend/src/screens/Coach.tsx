@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icons'
 import { Ring } from '../components/Ring'
 import { useData } from '../data/store'
@@ -7,6 +7,15 @@ import { haptic } from '../telegram'
 import type { Screen } from '../App'
 import type { ChatMessage, DaySummary } from '../types'
 
+// Переписка живёт в модуле, чтобы не сбрасываться при уходе с экрана и обратно.
+let cachedMessages: ChatMessage[] = []
+
+// Приветствие с учётом перебора нормы (остаток может быть отрицательным).
+function greeting(left: number): string {
+  if (left >= 0) return `Привет! На сегодня осталось **${left} ккал**. Спрашивай, если сомневаешься 🙂`
+  return `Привет! Сегодня перебор на **${-left} ккал** — давай разберёмся вместе 🙂`
+}
+
 export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { askCoach } = useData()
   // Коуч всегда про СЕГОДНЯ (независимо от выбранного дня на «Сегодня»).
@@ -14,19 +23,27 @@ export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => 
   const left = today ? today.goalKcal + today.burnedKcal - today.eatenKcal : 0
   const frac = today ? today.eatenKcal / (today.goalKcal + today.burnedKcal) : 0
 
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(cachedMessages)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const endRef = useRef<HTMLDivElement>(null)
 
+  // Всегда обновляем бюджет дня; приветствие ставим только если переписка пустая.
   useEffect(() => {
     api.getDay().then((d) => {
       setToday(d)
       const l = d.goalKcal + d.burnedKcal - d.eatenKcal
-      setMessages([{ id: 'greet', role: 'coach', text: `Привет! На сегодня осталось **${l} ккал**. Спрашивай, если сомневаешься 🙂` }])
+      setMessages((m) => (m.length ? m : [{ id: 'greet', role: 'coach', text: greeting(l) }]))
     }).catch(() => {
-      setMessages([{ id: 'greet', role: 'coach', text: 'Привет! Спрашивай про питание — помогу 🙂' }])
+      setMessages((m) => (m.length ? m : [{ id: 'greet', role: 'coach', text: 'Привет! Спрашивай про питание — помогу 🙂' }]))
     })
   }, [])
+
+  // Кэшируем переписку и держим её прокрученной к последнему сообщению.
+  useEffect(() => {
+    cachedMessages = messages
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages, busy])
 
   const send = async () => {
     const text = input.trim()
@@ -67,6 +84,7 @@ export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => 
           <Bubble key={m.id} msg={m} />
         ))}
         {busy && <div className="bub in muted">…</div>}
+        <div ref={endRef} />
       </div>
 
       <div className="chatbar">

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type {
   MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition, UpdateFastingRequest,
-  AddWorkoutRequest, RecognizeWorkoutRequest,
+  AddWorkoutRequest, RecognizeWorkoutRequest, SetWeightRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
 import { type NyamiRepo, todayKey } from './repo.js'
@@ -66,6 +66,16 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
     api.post<{ Body: { glasses: number; date?: string } }>('/api/water', async (req) => {
       const done = await repo.setWater(req.user.id, req.body.glasses, dayParam(req.body.date))
       return { done }
+    })
+
+    // Замер веса: пишем в историю, возвращаем обновлённый weightSeries.
+    api.post<{ Body: SetWeightRequest }>('/api/weight', async (req, reply) => {
+      const kg = Math.round(Number(req.body?.weightKg) * 10) / 10
+      if (!Number.isFinite(kg) || kg < 20 || kg > 400) {
+        return reply.code(400).send({ error: 'invalid_weight' })
+      }
+      const weightSeries = await repo.setWeight(req.user.id, kg)
+      return { weightSeries }
     })
 
     // Часто добавляемые блюда пользователя.

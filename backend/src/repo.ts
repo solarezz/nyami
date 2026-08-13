@@ -28,6 +28,8 @@ export interface NyamiRepo {
   addWorkout(userId: number, workout: AddWorkoutRequest, date: string): Promise<Workout>
   deleteWorkout(userId: number, workoutId: string): Promise<void>
   setWater(userId: number, glasses: number, date: string): Promise<number>
+  /** Записать замер веса; возвращает последние 7 замеров (weightSeries). */
+  setWeight(userId: number, weightKg: number): Promise<number[]>
   getFrequent(userId: number): Promise<FrequentMeal[]>
   /** ID всех прошедших онбординг пользователей — для рассылок. */
   getOnboardedUserIds(): Promise<number[]>
@@ -201,6 +203,13 @@ export function createMockRepo(): NyamiRepo {
       if (!water.has(u)) water.set(u, new Map())
       water.get(u)!.set(date, clamped)
       return clamped
+    },
+
+    async setWeight(u, weightKg) {
+      const w = weights.get(u) ?? []
+      w.push(weightKg)
+      weights.set(u, w)
+      return w.slice(-7)
     },
 
     async getFrequent(u) {

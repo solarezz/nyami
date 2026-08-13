@@ -42,8 +42,8 @@ export function ProfileForm({
   return (
     <>
       <div className="seg">
-        <span className={v.sex === 'male' ? 'on' : ''} onClick={() => set('sex', 'male')}>Мужской</span>
-        <span className={v.sex === 'female' ? 'on' : ''} onClick={() => set('sex', 'female')}>Женский</span>
+        <button type="button" className={v.sex === 'male' ? 'on' : ''} onClick={() => set('sex', 'male')}>Мужской</button>
+        <button type="button" className={v.sex === 'female' ? 'on' : ''} onClick={() => set('sex', 'female')}>Женский</button>
       </div>
 
       <div className="card" style={{ padding: '4px 18px' }}>
@@ -55,14 +55,14 @@ export function ProfileForm({
       <div className="tiny">Активность</div>
       <div className="chips">
         {ACTIVITIES.map((a) => (
-          <span key={a.key} className={`chip${v.activity === a.key ? ' on' : ''}`} onClick={() => set('activity', a.key)}>{a.label}</span>
+          <button type="button" key={a.key} className={`chip${v.activity === a.key ? ' on' : ''}`} onClick={() => set('activity', a.key)}>{a.label}</button>
         ))}
       </div>
 
       <div className="tiny">Цель</div>
       <div className="chips">
         {GOALS.map((g) => (
-          <span key={g.key} className={`chip${v.goal === g.key ? ' on' : ''}`} onClick={() => set('goal', g.key)}>{g.label}</span>
+          <button type="button" key={g.key} className={`chip${v.goal === g.key ? ' on' : ''}`} onClick={() => set('goal', g.key)}>{g.label}</button>
         ))}
       </div>
 

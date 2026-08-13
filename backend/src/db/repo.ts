@@ -158,6 +158,15 @@ export function createDrizzleRepo(): NyamiRepo {
       return clamped
     },
 
+    async setWeight(userId, weightKg) {
+      await ensureUser(userId)
+      await database.insert(weights).values({ telegramId: userId, weightKg })
+      const wRows = await database
+        .select({ w: weights.weightKg }).from(weights)
+        .where(eq(weights.telegramId, userId)).orderBy(asc(weights.at))
+      return wRows.slice(-7).map((r) => r.w)
+    },
+
     async getFrequent(userId) {
       const rows = await database
         .select().from(meals)

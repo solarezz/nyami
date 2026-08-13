@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Icon } from '../components/Icons'
+import { NumberField } from '../components/NumberField'
 import { useData } from '../data/store'
-import { haptic } from '../telegram'
 import type { Screen } from '../App'
 
 export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
@@ -24,11 +24,6 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const scale = grams / r.grams
   const extrasKcal = r.extras.reduce((s, e) => s + e.kcal, 0)
   const total = kcal + extrasKcal
-
-  const step = (delta: number) => {
-    haptic('light')
-    setGrams((g) => Math.max(10, g + delta))
-  }
 
   const confirm = async () => {
     if (saving) return
@@ -66,13 +61,7 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             </div>
           </div>
 
-          <div className="frow"><span className="muted">Порция</span>
-            <div className="stepper">
-              <b onClick={() => step(-10)}><Icon name="minus" /></b>
-              <span className="sv">{grams} г</span>
-              <b onClick={() => step(10)}><Icon name="plus" /></b>
-            </div>
-          </div>
+          <NumberField label="Порция, г" value={grams} min={10} max={3000} step={10} onChange={setGrams} />
           <div className="frow"><span className="muted">Калории</span><span className="fv" style={{ color: 'var(--accent)' }}>{kcal} ккал</span></div>
 
           <div className="chips" style={{ marginTop: 12, justifyContent: 'space-around' }}>
@@ -97,7 +86,7 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         <button className="btn" onClick={confirm} disabled={saving} style={saving ? { opacity: 0.7 } : undefined}>
           <Icon name="check" />{saving ? 'Добавляю…' : `Добавить · ${total} ккал`}
         </button>
-        <button className="btn ghost" onClick={() => onNavigate('add')}>Поправить</button>
+        <button className="btn ghost" onClick={() => onNavigate('add')}>Заново</button>
       </div>
     </div>
   )

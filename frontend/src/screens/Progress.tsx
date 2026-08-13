@@ -1,26 +1,47 @@
+import { useState } from 'react'
 import { Icon } from '../components/Icons'
+import { NumberField } from '../components/NumberField'
 import { BottomNav } from '../components/BottomNav'
 import { useData } from '../data/store'
 import type { Screen } from '../App'
 
-const SCALE = 2400 // верх шкалы графика недели
-
 export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, week } = useData()
+  const { day, week, me, setWeight } = useData()
+  const [logging, setLogging] = useState(false)
+  const [draft, setDraft] = useState(0)
+  const [saving, setSaving] = useState(false)
   if (!day || !week) return null
 
   const NORM = day.goalKcal
   const weekChart = week.days
   const weightSeries = week.weightSeries
+  const hasWeight = weightSeries.length > 0
+  // Потолок графика подстраивается под норму и фактические пики недели.
+  const SCALE = Math.max(NORM, ...weekChart.map((d) => d.kcal)) * 1.1 || 2400
   const loggedDays = weekChart.filter((d) => d.kcal > 0).length
   const avg = loggedDays ? Math.round(weekChart.reduce((s, d) => s + d.kcal, 0) / loggedDays) : 0
   const water = day.water
-  const lastWeight = weightSeries[weightSeries.length - 1] ?? 0
+  const lastWeight = hasWeight ? weightSeries[weightSeries.length - 1] : 0
 
   // Изменение веса: последний замер минус первый (0, если замер один).
   const wDelta = weightSeries.length > 1 ? lastWeight - weightSeries[0] : 0
-  const wDeltaStr = `${wDelta < 0 ? '−' : wDelta > 0 ? '+' : ''}${Math.abs(wDelta).toFixed(1)}`
+  const wDeltaStr = hasWeight ? `${wDelta < 0 ? '−' : wDelta > 0 ? '+' : ''}${Math.abs(wDelta).toFixed(1)}` : '—'
   const wDeltaColor = wDelta < 0 ? 'var(--accent)' : wDelta > 0 ? 'var(--carb)' : 'var(--sub)'
+
+  const startLogging = () => {
+    setDraft(hasWeight ? lastWeight : me?.profile.weightKg ?? 70)
+    setLogging(true)
+  }
+  const saveWeight = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
+      await setWeight(draft)
+      setLogging(false)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="screen gap fade">
@@ -69,11 +90,33 @@ export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           </div>
 
           <div className="tile">
-            <div className="th"><Icon name="scale" style={{ color: 'var(--accent)' }} />Вес</div>
-            <div className="bn">{lastWeight.toFixed(1)}<small> кг</small></div>
-            <svg className="mini" viewBox="0 0 120 34" preserveAspectRatio="none">
-              <polyline points={spark(weightSeries)} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <div className="th" style={{ justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="scale" style={{ color: 'var(--accent)' }} />Вес</span>
+              <button
+                onClick={() => (logging ? setLogging(false) : startLogging())}
+                aria-label={logging ? 'Отмена' : 'Записать вес'}
+                style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--scr)', color: 'var(--accent)', display: 'grid', placeItems: 'center', boxShadow: 'inset 0 0 0 1px var(--line)' }}
+              >
+                <Icon name={logging ? 'x' : 'plus'} style={{ width: 16, height: 16, strokeWidth: 2.6 }} />
+              </button>
+            </div>
+            {logging ? (
+              <div style={{ marginTop: 4 }}>
+                <NumberField label="Текущий, кг" value={draft} min={20} max={400} decimals={1} onChange={setDraft} />
+                <button className="btn" style={{ height: 44, marginTop: 8 }} onClick={saveWeight} disabled={saving}>
+                  {saving ? 'Сохраняю…' : 'Сохранить'}
+                </button>
+              </div>
+            ) : hasWeight ? (
+              <>
+                <div className="bn">{lastWeight.toFixed(1)}<small> кг</small></div>
+                <svg className="mini" viewBox="0 0 120 34" preserveAspectRatio="none">
+                  <polyline points={spark(weightSeries)} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </>
+            ) : (
+              <div className="muted" style={{ fontSize: 12, marginTop: 10, fontWeight: 600 }}>Пока нет замеров · нажми +</div>
+            )}
           </div>
 
           <div className="tile">

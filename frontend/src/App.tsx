@@ -25,12 +25,24 @@ export function App() {
 }
 
 function Root() {
-  const { loading, error, onboarded } = useData()
+  const { loading, error, onboarded, retry } = useData()
 
   if (loading) return <Splash text="Загружаем…" />
-  if (error) return <Splash text={`Не удалось подключиться к серверу.\n${error}`} />
+  if (error) return <ErrorScreen onRetry={retry} />
 
   return <Router startOnboarding={!onboarded} />
+}
+
+function ErrorScreen({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="screen" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 16 }}>
+      <div style={{ fontSize: 40 }}>😔</div>
+      <div style={{ color: 'var(--sub)', fontWeight: 600, maxWidth: 280 }}>
+        Не удалось подключиться. Проверь интернет и попробуй ещё раз.
+      </div>
+      <button className="btn" style={{ maxWidth: 240 }} onClick={onRetry}>Повторить</button>
+    </div>
+  )
 }
 
 // Куда ведёт нативная кнопка «Назад» с каждого экрана (undefined = кнопки нет).

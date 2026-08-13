@@ -4,7 +4,7 @@ import { RingStat } from '../components/Ring'
 import { FastingCard } from '../components/FastingCard'
 import { BottomNav } from '../components/BottomNav'
 import { useData, todayStr } from '../data/store'
-import { haptic, showAlert } from '../telegram'
+import { haptic, showAlert, showConfirm } from '../telegram'
 import type { Screen } from '../App'
 import type { Meal, MealType, Workout } from '../types'
 
@@ -52,13 +52,15 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const effectiveGoal = d.goalKcal + d.burnedKcal
   const left = effectiveGoal - d.eatenKcal
   const eatenFrac = d.eatenKcal / effectiveGoal
+  const over = left < 0 // съедено больше нормы → показываем «перебор», а не минус
 
   const changeWater = (delta: number) => {
     haptic('light')
-    setWater(Math.max(0, d.water.done + delta))
+    setWater(Math.min(d.water.goal, Math.max(0, d.water.done + delta)))
   }
 
   const onDelete = async (meal: Meal) => {
+    if (!(await showConfirm(`Удалить «${meal.name}»?`))) return
     haptic('medium')
     try {
       await deleteMeal(meal.id)
@@ -74,6 +76,7 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }
 
   const onDeleteWorkout = async (w: Workout) => {
+    if (!(await showConfirm(`Удалить «${w.name}»?`))) return
     haptic('medium')
     try {
       await deleteWorkout(w.id)
@@ -108,8 +111,8 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       <div className="scrollarea">
         <div className="card calcard">
           <div className="l">
-            <div className="big">{left}</div>
-            <div className="lbl">Калорий осталось</div>
+            <div className="big" style={over ? { color: 'var(--prot)' } : undefined}>{Math.abs(left)}</div>
+            <div className="lbl">{over ? 'Калорий перебор' : 'Калорий осталось'}</div>
             <div className="pill">
               <Icon name="flame" style={{ width: 14, height: 14, fill: 'var(--accent)' }} />
               {d.eatenKcal.toLocaleString('ru-RU')} съедено
@@ -121,8 +124,8 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             )}
           </div>
           <RingStat
-            progress={eatenFrac} color="var(--accent)" track="var(--scr)" size={118}
-            label={<span style={{ fontSize: 27, color: 'var(--ink)' }}>{Math.round(eatenFrac * 100)}%</span>}
+            progress={eatenFrac} color={over ? 'var(--prot)' : 'var(--accent)'} track="var(--scr)" size={118}
+            label={<span style={{ fontSize: 27, color: over ? 'var(--prot)' : 'var(--ink)' }}>{Math.round(eatenFrac * 100)}%</span>}
           />
         </div>
 
@@ -154,9 +157,9 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               <Icon name="drop" style={{ color: 'var(--fat)', width: 18, height: 18 }} />Вода
             </div>
             <div className="stepper">
-              <b onClick={() => changeWater(-1)}><Icon name="minus" /></b>
+              <button type="button" onClick={() => changeWater(-1)} aria-label="Меньше воды"><Icon name="minus" /></button>
               <span className="sv">{d.water.done} / {d.water.goal}</span>
-              <b onClick={() => changeWater(1)}><Icon name="plus" /></b>
+              <button type="button" onClick={() => changeWater(1)} aria-label="Больше воды"><Icon name="plus" /></button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>

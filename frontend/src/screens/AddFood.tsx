@@ -118,20 +118,12 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           >
             <Icon name="camera" /><div className="ol">{busy === 'photo' ? 'Распознаю…' : 'Сфотографировать'}</div>
           </button>
-          <button className="optcard" style={{ background: 'var(--card)' }} onClick={() => textRef.current?.focus()} disabled={busy !== false}>
-            <Icon name="pencil" style={{ color: 'var(--accent)' }} /><div className="ol">Описать словами</div>
+          <button className="optcard" style={{ background: 'var(--card)' }} onClick={() => setScanning(true)} disabled={busy !== false}>
+            <Icon name="barcode" style={{ color: 'var(--accent)' }} /><div className="ol">{busy === 'barcode' ? 'Сканирую…' : 'Штрихкод'}</div>
           </button>
         </div>
 
-        <button
-          className="optcard" style={{ background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, flexDirection: 'row', padding: '14px' }}
-          onClick={() => setScanning(true)} disabled={busy !== false}
-        >
-          <Icon name="barcode" style={{ color: 'var(--accent)' }} />
-          <span className="ol" style={{ margin: 0 }}>{busy === 'barcode' ? 'Сканирую…' : 'Сканировать штрихкод'}</span>
-        </button>
-
-        <div className="tiny">Что ты съел</div>
+        <div className="tiny">Или опиши словами</div>
         <textarea ref={textRef} className="inputcard" rows={2} value={text} placeholder="Напиши блюдо: «тарелка борща со сметаной»…" onChange={(e) => setText(e.target.value)} />
 
         {frequent.length > 0 && (
@@ -148,10 +140,13 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         )}
 
         <div style={{ flex: 1 }} />
-        <button className="btn" onClick={onRecognizeText} disabled={busy !== false} style={busy ? { opacity: 0.7 } : undefined}>
+        <button
+          className={`btn${text.trim() ? '' : ' ghost'}`} onClick={onRecognizeText}
+          disabled={busy !== false} style={busy ? { opacity: 0.7 } : undefined}
+        >
           <Icon name="spark" />{busy === 'text' ? 'Распознаю…' : 'Распознать через ИИ'}
         </button>
-        <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>Powered by Groq · оценка ±15%</div>
+        <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>Оценка ИИ · погрешность ±15%</div>
       </div>
       </div>
     </>

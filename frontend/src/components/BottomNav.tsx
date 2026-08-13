@@ -17,19 +17,19 @@ export function BottomNav({ active, onNavigate }: { active: Screen; onNavigate: 
   return (
     <nav className="nav">
       <button className={`ni${active === 'today' ? ' on' : ''}`} onClick={() => go('today')} aria-label="Сегодня">
-        <Icon name="grid" />
+        <Icon name="grid" /><span className="nl">Сегодня</span>
       </button>
       <button className={`ni${active === 'progress' ? ' on' : ''}`} onClick={() => go('progress')} aria-label="Прогресс">
-        <Icon name="chart" />
+        <Icon name="chart" /><span className="nl">Прогресс</span>
       </button>
       <button className="fab" onClick={goAdd} aria-label="Добавить еду">
-        <Icon name="camera" />
+        <Icon name="plus" />
       </button>
       <button className={`ni${active === 'coach' ? ' on' : ''}`} onClick={() => go('coach')} aria-label="Коуч">
-        <Icon name="chat" />
+        <Icon name="chat" /><span className="nl">Коуч</span>
       </button>
       <button className={`ni${active === 'profile' ? ' on' : ''}`} onClick={() => go('profile')} aria-label="Профиль">
-        <Icon name="user" />
+        <Icon name="user" /><span className="nl">Профиль</span>
       </button>
     </nav>
   )

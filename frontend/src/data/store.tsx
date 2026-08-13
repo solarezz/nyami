@@ -20,6 +20,7 @@ interface DataState {
   selectedDate: string
   isToday: boolean
   setSelectedDate: (date: string) => Promise<void>
+  retry: () => void
   pending: Recognition | null
   setPending: (r: Recognition | null) => void
   refresh: () => Promise<void>
@@ -33,6 +34,7 @@ interface DataState {
   addWorkout: (workout: AddWorkoutRequest) => Promise<void>
   deleteWorkout: (id: string) => Promise<void>
   setWater: (glasses: number) => Promise<void>
+  setWeight: (weightKg: number) => Promise<void>
   updateProfile: (req: UpdateProfileRequest) => Promise<void>
   setFasting: (req: UpdateFastingRequest) => Promise<void>
   askCoach: (message: string) => Promise<string>
@@ -70,11 +72,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setWeek(w)
   }, [])
 
-  useEffect(() => {
+  const retry = useCallback(() => {
+    setError(null)
+    setLoading(true)
     refresh()
       .catch((e) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'))
       .finally(() => setLoading(false))
   }, [refresh])
+
+  useEffect(() => {
+    retry()
+  }, [retry])
 
   const setSelectedDate = useCallback(async (date: string) => {
     setSelectedDateState(date)
@@ -128,6 +136,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setDay((d) => (d ? { ...d, water: { ...d.water, done } } : d))
   }, [])
 
+  const setWeight = useCallback(async (weightKg: number) => {
+    const { weightSeries } = await api.setWeight(weightKg)
+    setWeek((w) => (w ? { ...w, weightSeries } : w))
+  }, [])
+
   const updateProfile = useCallback(async (req: UpdateProfileRequest) => {
     await api.updateProfile(req)
     const [m, d, w] = await Promise.all([api.getMe(), api.getDay(dateRef.current), api.getWeek()])
@@ -150,12 +163,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{
       me, day, week, onboarded: me?.onboarded ?? false, loading, error,
-      selectedDate, isToday: selectedDate === todayStr(), setSelectedDate,
+      selectedDate, isToday: selectedDate === todayStr(), setSelectedDate, retry,
       selectedMealType, setSelectedMealType,
       pending, setPending,
       refresh, recognize, recognizeBarcode, addMeal, deleteMeal,
       recognizeWorkout, addWorkout, deleteWorkout,
-      setWater, updateProfile, setFasting, askCoach,
+      setWater, setWeight, updateProfile, setFasting, askCoach,
     }}>
       {children}
     </Ctx.Provider>

@@ -40,13 +40,14 @@ export function FastingSettings() {
 
       <div className="chips">
         {PROTOCOL_LABELS.map((o) => (
-          <span
+          <button
+            type="button"
             key={o.key}
             className={`chip${protocol === o.key ? ' on' : ''}`}
             onClick={() => { haptic('light'); setProtocol(o.key) }}
           >
             {o.label}
-          </span>
+          </button>
         ))}
       </div>
 
@@ -55,9 +56,9 @@ export function FastingSettings() {
           <div className="rowhead">
             <div className="tiny">Начало окна еды</div>
             <div className="stepper">
-              <b onClick={() => shift(-1)}><Icon name="minus" /></b>
+              <button type="button" onClick={() => shift(-1)} aria-label="Раньше"><Icon name="minus" /></button>
               <span className="sv">{String(eatStart).padStart(2, '0')}:00</span>
-              <b onClick={() => shift(1)}><Icon name="plus" /></b>
+              <button type="button" onClick={() => shift(1)} aria-label="Позже"><Icon name="plus" /></button>
             </div>
           </div>
           {preview && (

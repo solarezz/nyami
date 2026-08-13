@@ -1,7 +1,7 @@
 import type {
   MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile, FrequentMeal,
   AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest, UpdateFastingRequest,
-  Workout, WorkoutRecognition, AddWorkoutRequest,
+  Workout, WorkoutRecognition, AddWorkoutRequest, SetWeightResponse,
 } from '@nyami/shared'
 
 // В проде фронт и API на одном домене → относительный путь. В dev — локальный бэкенд.
@@ -41,6 +41,7 @@ export const api = {
   addWorkout: (body: AddWorkoutRequest, date?: string) => req<Workout>('/api/workouts', { method: 'POST', body: JSON.stringify({ ...body, date }) }),
   deleteWorkout: (id: string) => req<{ ok: boolean }>(`/api/workouts/${id}`, { method: 'DELETE' }),
   setWater: (glasses: number, date?: string) => req<{ done: number }>('/api/water', { method: 'POST', body: JSON.stringify({ glasses, date }) }),
+  setWeight: (weightKg: number) => req<SetWeightResponse>('/api/weight', { method: 'POST', body: JSON.stringify({ weightKg }) }),
   getFrequent: () => req<FrequentMeal[]>('/api/frequent'),
   recognize: (body: RecognizeRequest) => req<Recognition>('/api/recognize', { method: 'POST', body: JSON.stringify(body) }),
   getByBarcode: (code: string) => req<Recognition>(`/api/barcode/${encodeURIComponent(code)}`),
