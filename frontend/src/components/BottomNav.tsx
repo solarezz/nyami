@@ -1,11 +1,18 @@
 import { Icon } from './Icons'
 import { haptic } from '../telegram'
+import { useData } from '../data/store'
 import type { Screen } from '../App'
 
 export function BottomNav({ active, onNavigate }: { active: Screen; onNavigate: (s: Screen) => void }) {
+  const { setSelectedMealType } = useData()
   const go = (s: Screen) => {
     haptic('light')
     onNavigate(s)
+  }
+  // FAB — общий вход «Добавить еду»: без выбранной категории (тип по времени).
+  const goAdd = () => {
+    setSelectedMealType(null)
+    go('add')
   }
   return (
     <nav className="nav">
@@ -15,7 +22,7 @@ export function BottomNav({ active, onNavigate }: { active: Screen; onNavigate: 
       <button className={`ni${active === 'progress' ? ' on' : ''}`} onClick={() => go('progress')} aria-label="Прогресс">
         <Icon name="chart" />
       </button>
-      <button className="fab" onClick={() => go('add')} aria-label="Добавить еду">
+      <button className="fab" onClick={goAdd} aria-label="Добавить еду">
         <Icon name="camera" />
       </button>
       <button className={`ni${active === 'coach' ? ' on' : ''}`} onClick={() => go('coach')} aria-label="Коуч">

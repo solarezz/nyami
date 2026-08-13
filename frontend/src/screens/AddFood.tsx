@@ -8,8 +8,12 @@ import { showAlert } from '../telegram'
 import type { Screen } from '../App'
 import type { FrequentMeal } from '../types'
 
+const MEAL_LABELS: Record<string, string> = {
+  breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус',
+}
+
 export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { recognize, recognizeBarcode, addMeal } = useData()
+  const { recognize, recognizeBarcode, addMeal, selectedMealType } = useData()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState<false | 'text' | 'photo' | 'quick' | 'barcode'>(false)
   const [frequent, setFrequent] = useState<FrequentMeal[]>([])
@@ -101,7 +105,7 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       )}
       <div className="screen gap fade">
       <div className="topbar">
-        <div className="h2">Добавить еду</div>
+        <div className="h2">{selectedMealType ? `Добавить: ${MEAL_LABELS[selectedMealType]}` : 'Добавить еду'}</div>
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} hidden />

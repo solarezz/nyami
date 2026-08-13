@@ -45,7 +45,7 @@ function dateLabel(iso: string): string {
 }
 
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, me, deleteMeal, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate } = useData()
+  const { day, me, deleteMeal, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate, setSelectedMealType } = useData()
   if (!day) return null
   const d = day
   // Сожжённые на тренировках калории увеличивают дневной остаток.
@@ -65,6 +65,12 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     } catch {
       showAlert('Не удалось удалить приём. Попробуй ещё раз.')
     }
+  }
+
+  const addToGroup = (type: MealType) => {
+    haptic('light')
+    setSelectedMealType(type)
+    onNavigate('add')
   }
 
   const onDeleteWorkout = async (w: Workout) => {
@@ -169,30 +175,28 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
         <div className="rowhead">
           <div className="h2">Приёмы пищи</div>
-          <button className="add" onClick={() => onNavigate('add')}><Icon name="plus" /></button>
         </div>
 
-        {d.meals.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', color: 'var(--sub)', fontWeight: 800, padding: '22px 18px' }}>
-            Пока пусто. Добавь первый приём 👇
-          </div>
-        ) : (
-          MEAL_GROUPS.map((g) => {
-            const items = d.meals.filter((m) => m.mealType === g.type)
-            if (items.length === 0) return null
-            const sum = items.reduce((s, m) => s + m.kcal, 0)
-            return (
-              <div key={g.type} style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                <div className="tiny" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{g.label}</span><span>{sum} ккал</span>
+        {MEAL_GROUPS.map((g) => {
+          const items = d.meals.filter((m) => m.mealType === g.type)
+          const sum = items.reduce((s, m) => s + m.kcal, 0)
+          return (
+            <div key={g.type} style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+              <div className="rowhead">
+                <div className="tiny" style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span>{g.label}</span>
+                  {sum > 0 && <span style={{ textTransform: 'none', color: 'var(--accent)' }}>{sum} ккал</span>}
                 </div>
-                {items.map((meal, i) => (
-                  <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)} />
-                ))}
+                <button className="add" onClick={() => addToGroup(g.type)} aria-label={`Добавить: ${g.label}`}>
+                  <Icon name="plus" />
+                </button>
               </div>
-            )
-          })
-        )}
+              {items.map((meal, i) => (
+                <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)} />
+              ))}
+            </div>
+          )
+        })}
 
         <div className="rowhead">
           <div className="h2">Тренировки</div>

@@ -166,9 +166,10 @@ export function createMockRepo(): NyamiRepo {
       const meal: StoredMeal = {
         id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
         time: hhmm(when),
-        mealType: mealTypeForHour(when.getHours()),
         eatenAt,
         ...req,
+        // Тип из запроса приоритетнее; если не задан — определяем по времени.
+        mealType: req.mealType ?? mealTypeForHour(when.getHours()),
       }
       getMeals(u).push(meal)
       return stripInternal(meal)

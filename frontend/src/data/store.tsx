@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type {
   MeResponse, DaySummary, Recognition, AddMealRequest, RecognizeRequest, UpdateProfileRequest, UpdateFastingRequest,
-  WorkoutRecognition, AddWorkoutRequest,
+  WorkoutRecognition, AddWorkoutRequest, MealType,
 } from '@nyami/shared'
 import { api, type WeekResponse } from '../api'
 
@@ -25,6 +25,8 @@ interface DataState {
   refresh: () => Promise<void>
   recognize: (req: RecognizeRequest) => Promise<Recognition>
   recognizeBarcode: (code: string) => Promise<Recognition>
+  selectedMealType: MealType | null
+  setSelectedMealType: (t: MealType | null) => void
   addMeal: (meal: AddMealRequest) => Promise<void>
   deleteMeal: (id: string) => Promise<void>
   recognizeWorkout: (text: string) => Promise<WorkoutRecognition>
@@ -50,6 +52,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // ref, чтобы колбэки всегда видели актуальную дату без пересоздания.
   const dateRef = useRef(selectedDate)
   dateRef.current = selectedDate
+
+  // Выбранная категория приёма (задаётся кнопкой «+» у группы; null → определяется по времени).
+  const [selectedMealType, setSelectedMealTypeState] = useState<MealType | null>(null)
+  const mealTypeRef = useRef<MealType | null>(selectedMealType)
+  mealTypeRef.current = selectedMealType
+  const setSelectedMealType = useCallback((t: MealType | null) => {
+    setSelectedMealTypeState(t)
+    mealTypeRef.current = t
+  }, [])
 
   const refresh = useCallback(async () => {
     const m = await api.getMe()
@@ -90,7 +101,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const addMeal = useCallback(async (meal: AddMealRequest) => {
-    await api.addMeal(meal, dateRef.current)
+    // Тип из meal приоритетен; иначе — выбранная категория; иначе бэкенд решит по времени.
+    await api.addMeal({ ...meal, mealType: meal.mealType ?? mealTypeRef.current ?? undefined }, dateRef.current)
     await reloadDayAndWeek()
   }, [reloadDayAndWeek])
 
@@ -139,6 +151,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={{
       me, day, week, onboarded: me?.onboarded ?? false, loading, error,
       selectedDate, isToday: selectedDate === todayStr(), setSelectedDate,
+      selectedMealType, setSelectedMealType,
       pending, setPending,
       refresh, recognize, recognizeBarcode, addMeal, deleteMeal,
       recognizeWorkout, addWorkout, deleteWorkout,

@@ -115,6 +115,7 @@ export interface AddMealRequest {
   protein: number
   carbs: number
   fat: number
+  mealType?: MealType // если задан — приём идёт в эту категорию; иначе определяется по времени
 }
 
 export interface AddWorkoutRequest {

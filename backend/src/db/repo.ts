@@ -124,7 +124,8 @@ export function createDrizzleRepo(): NyamiRepo {
       const eatenAt = date === todayKey() ? now : new Date(`${date}T${now.toISOString().slice(11)}`)
       const inserted = await database
         .insert(meals)
-        .values({ telegramId: userId, mealType: mealTypeForHour(eatenAt.getUTCHours()), eatenAt, ...req })
+        // Тип из запроса приоритетнее; если не задан — определяем по времени.
+        .values({ telegramId: userId, eatenAt, ...req, mealType: req.mealType ?? mealTypeForHour(eatenAt.getUTCHours()) })
         .returning()
       return toMeal(inserted[0])
     },
