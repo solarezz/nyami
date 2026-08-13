@@ -6,7 +6,7 @@ import { BottomNav } from '../components/BottomNav'
 import { useData, todayStr } from '../data/store'
 import { haptic, showAlert } from '../telegram'
 import type { Screen } from '../App'
-import type { Meal, MealType } from '../types'
+import type { Meal, MealType, Workout } from '../types'
 
 const macroMeta = [
   { key: 'protein', emoji: '🍗', label: 'белки', color: 'var(--prot)', track: 'var(--prot-soft)' },
@@ -45,11 +45,13 @@ function dateLabel(iso: string): string {
 }
 
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, me, deleteMeal, setWater, selectedDate, isToday, setSelectedDate } = useData()
+  const { day, me, deleteMeal, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate } = useData()
   if (!day) return null
   const d = day
-  const left = d.goalKcal - d.eatenKcal
-  const eatenFrac = d.eatenKcal / d.goalKcal
+  // Сожжённые на тренировках калории увеличивают дневной остаток.
+  const effectiveGoal = d.goalKcal + d.burnedKcal
+  const left = effectiveGoal - d.eatenKcal
+  const eatenFrac = d.eatenKcal / effectiveGoal
 
   const changeWater = (delta: number) => {
     haptic('light')
@@ -62,6 +64,15 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       await deleteMeal(meal.id)
     } catch {
       showAlert('Не удалось удалить приём. Попробуй ещё раз.')
+    }
+  }
+
+  const onDeleteWorkout = async (w: Workout) => {
+    haptic('medium')
+    try {
+      await deleteWorkout(w.id)
+    } catch {
+      showAlert('Не удалось удалить тренировку. Попробуй ещё раз.')
     }
   }
 
@@ -97,6 +108,11 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               <Icon name="flame" style={{ width: 14, height: 14, fill: 'var(--accent)' }} />
               {d.eatenKcal.toLocaleString('ru-RU')} съедено
             </div>
+            {d.burnedKcal > 0 && (
+              <div className="pill" style={{ marginTop: 6 }}>
+                💪 +{d.burnedKcal.toLocaleString('ru-RU')} сожжено
+              </div>
+            )}
           </div>
           <RingStat
             progress={eatenFrac} color="var(--accent)" track="var(--scr)" size={118}
@@ -177,9 +193,42 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             )
           })
         )}
+
+        <div className="rowhead">
+          <div className="h2">Тренировки</div>
+          <button className="add" onClick={() => onNavigate('workout')}><Icon name="plus" /></button>
+        </div>
+
+        {d.workouts.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', color: 'var(--sub)', fontWeight: 800, padding: '18px' }}>
+            Добавь тренировку — калории пойдут в плюс к остатку 💪
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            {d.workouts.map((w) => (
+              <WorkoutCard key={w.id} workout={w} onDelete={() => onDeleteWorkout(w)} />
+            ))}
+          </div>
+        )}
       </div>
 
       <BottomNav active="today" onNavigate={onNavigate} />
+    </div>
+  )
+}
+
+function WorkoutCard({ workout, onDelete }: { workout: Workout; onDelete: () => void }) {
+  return (
+    <div className="meal">
+      <div className="thumb" style={{ background: 'var(--accent-soft)' }}>{workout.emoji}</div>
+      <div className="mm">
+        <div className="nm">{workout.name}</div>
+        <div className="chips"><span className="muted" style={{ fontSize: 12 }}>{workout.minutes} мин · {workout.time}</span></div>
+      </div>
+      <div className="rt">
+        <div className="kc" style={{ color: 'var(--accent)' }}>−{workout.kcal}<small> ккал</small></div>
+      </div>
+      <button className="del" onClick={onDelete} aria-label="Удалить"><Icon name="trash" /></button>
     </div>
   )
 }

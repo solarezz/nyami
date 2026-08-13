@@ -1,11 +1,11 @@
 import { and, eq, gte, lt, asc, desc } from 'drizzle-orm'
-import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType, FastingProtocol } from '@nyami/shared'
+import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType, FastingProtocol, Workout } from '@nyami/shared'
 import {
   type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey, dayRange, topFrequent, mealTypeForHour,
 } from '../repo.js'
 import { computeNorm } from '../nutrition.js'
 import { db, type Db } from './client.js'
-import { users, meals, days, weights } from './schema.js'
+import { users, meals, days, weights, workouts } from './schema.js'
 
 export function createDrizzleRepo(): NyamiRepo {
   const database = db as Db // конструируется только при заданном DATABASE_URL
@@ -62,6 +62,12 @@ export function createDrizzleRepo(): NyamiRepo {
       const list: Meal[] = rows.map(toMeal)
       const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
 
+      const wkRows = await database
+        .select().from(workouts)
+        .where(and(eq(workouts.telegramId, userId), gte(workouts.doneAt, start), lt(workouts.doneAt, end)))
+        .orderBy(asc(workouts.doneAt))
+      const wkList: Workout[] = wkRows.map(toWorkout)
+
       // Стрик: даты всех приёмов пользователя.
       const allDates = await database.select({ at: meals.eatenAt }).from(meals).where(eq(meals.telegramId, userId))
       const dateSet = new Set(allDates.map((r) => r.at.toISOString().slice(0, 10)))
@@ -74,6 +80,7 @@ export function createDrizzleRepo(): NyamiRepo {
         date,
         eatenKcal: sum('kcal'),
         goalKcal: u.dailyKcal,
+        burnedKcal: wkList.reduce((s, w) => s + w.kcal, 0),
         macros: {
           protein: { eaten: sum('protein'), goal: u.protein },
           fat: { eaten: sum('fat'), goal: u.fat },
@@ -82,6 +89,7 @@ export function createDrizzleRepo(): NyamiRepo {
         water: { done: waterRow[0]?.water ?? 0, goal: WATER_GOAL },
         streak: computeStreak(dateSet),
         meals: list,
+        workouts: wkList,
       }
       return day
     },
@@ -125,6 +133,21 @@ export function createDrizzleRepo(): NyamiRepo {
       await database.delete(meals).where(and(eq(meals.id, mealId), eq(meals.telegramId, userId)))
     },
 
+    async addWorkout(userId, req, date) {
+      await ensureUser(userId)
+      const now = new Date()
+      const doneAt = date === todayKey() ? now : new Date(`${date}T${now.toISOString().slice(11)}`)
+      const inserted = await database
+        .insert(workouts)
+        .values({ telegramId: userId, doneAt, ...req })
+        .returning()
+      return toWorkout(inserted[0])
+    },
+
+    async deleteWorkout(userId, workoutId) {
+      await database.delete(workouts).where(and(eq(workouts.id, workoutId), eq(workouts.telegramId, userId)))
+    },
+
     async setWater(userId, glasses, date) {
       await ensureUser(userId)
       const clamped = Math.max(0, Math.min(20, Math.round(glasses)))
@@ -154,6 +177,12 @@ function toMeal(m: typeof meals.$inferSelect): Meal {
     id: m.id, name: m.name, emoji: m.emoji, time: hhmm(m.eatenAt),
     mealType: m.mealType as MealType,
     kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+  }
+}
+
+function toWorkout(w: typeof workouts.$inferSelect): Workout {
+  return {
+    id: w.id, name: w.name, emoji: w.emoji, minutes: w.minutes, kcal: w.kcal, time: hhmm(w.doneAt),
   }
 }
 

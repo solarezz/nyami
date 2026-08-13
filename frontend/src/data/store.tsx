@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type {
   MeResponse, DaySummary, Recognition, AddMealRequest, RecognizeRequest, UpdateProfileRequest, UpdateFastingRequest,
+  WorkoutRecognition, AddWorkoutRequest,
 } from '@nyami/shared'
 import { api, type WeekResponse } from '../api'
 
@@ -26,6 +27,9 @@ interface DataState {
   recognizeBarcode: (code: string) => Promise<Recognition>
   addMeal: (meal: AddMealRequest) => Promise<void>
   deleteMeal: (id: string) => Promise<void>
+  recognizeWorkout: (text: string) => Promise<WorkoutRecognition>
+  addWorkout: (workout: AddWorkoutRequest) => Promise<void>
+  deleteWorkout: (id: string) => Promise<void>
   setWater: (glasses: number) => Promise<void>
   updateProfile: (req: UpdateProfileRequest) => Promise<void>
   setFasting: (req: UpdateFastingRequest) => Promise<void>
@@ -95,6 +99,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await reloadDayAndWeek()
   }, [reloadDayAndWeek])
 
+  const recognizeWorkout = useCallback(async (text: string) => api.recognizeWorkout(text), [])
+
+  const addWorkout = useCallback(async (workout: AddWorkoutRequest) => {
+    await api.addWorkout(workout, dateRef.current)
+    await reloadDayAndWeek()
+  }, [reloadDayAndWeek])
+
+  const deleteWorkout = useCallback(async (id: string) => {
+    await api.deleteWorkout(id)
+    await reloadDayAndWeek()
+  }, [reloadDayAndWeek])
+
   const setWater = useCallback(async (glasses: number) => {
     const { done } = await api.setWater(glasses, dateRef.current)
     setDay((d) => (d ? { ...d, water: { ...d.water, done } } : d))
@@ -124,7 +140,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       me, day, week, onboarded: me?.onboarded ?? false, loading, error,
       selectedDate, isToday: selectedDate === todayStr(), setSelectedDate,
       pending, setPending,
-      refresh, recognize, recognizeBarcode, addMeal, deleteMeal, setWater, updateProfile, setFasting, askCoach,
+      refresh, recognize, recognizeBarcode, addMeal, deleteMeal,
+      recognizeWorkout, addWorkout, deleteWorkout,
+      setWater, updateProfile, setFasting, askCoach,
     }}>
       {children}
     </Ctx.Provider>

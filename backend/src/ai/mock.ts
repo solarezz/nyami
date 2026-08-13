@@ -1,4 +1,4 @@
-import type { Recognition, DaySummary } from '@nyami/shared'
+import type { Recognition, DaySummary, WorkoutRecognition } from '@nyami/shared'
 
 export function mockRecognize(): Recognition {
   return {
@@ -8,7 +8,12 @@ export function mockRecognize(): Recognition {
   }
 }
 
+export function mockWorkout(weightKg: number): WorkoutRecognition {
+  // Бег 30 мин ≈ MET 7 × вес × 0.5ч.
+  return { name: 'Бег', emoji: '🏃', minutes: 30, kcal: Math.round(7 * weightKg * 0.5), confidence: 0.6 }
+}
+
 export function mockCoach(day: DaySummary, message: string): string {
-  const left = day.goalKcal - day.eatenKcal
+  const left = day.goalKcal + day.burnedKcal - day.eatenKcal
   return `На сегодня осталось ${left} ккал. (Заглушка — подключи GROQ_API_KEY, чтобы отвечал ИИ.) Ты спросил: «${message}».`
 }

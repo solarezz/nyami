@@ -1,10 +1,11 @@
-import type { Recognition, DaySummary, RecognizeRequest } from '@nyami/shared'
+import type { Recognition, DaySummary, RecognizeRequest, WorkoutRecognition } from '@nyami/shared'
 import { config } from '../config.js'
-import { mockRecognize, mockCoach } from './mock.js'
-import { groqRecognize, groqCoach } from './groq.js'
+import { mockRecognize, mockCoach, mockWorkout } from './mock.js'
+import { groqRecognize, groqCoach, groqWorkout } from './groq.js'
 
 export interface Ai {
   recognize(input: RecognizeRequest): Promise<Recognition>
+  recognizeWorkout(text: string, weightKg: number): Promise<WorkoutRecognition>
   coach(day: DaySummary, message: string): Promise<string>
 }
 
@@ -17,6 +18,9 @@ export function getAi(): Ai {
       // чем подсунуть неправильное блюдо. groqRecognize сам ретраит.
       async recognize(input) {
         return groqRecognize(input)
+      },
+      async recognizeWorkout(text, weightKg) {
+        return groqWorkout(text, weightKg)
       },
       async coach(day, message) {
         try {
@@ -33,6 +37,9 @@ export function getAi(): Ai {
   return {
     async recognize() {
       return mockRecognize()
+    },
+    async recognizeWorkout(_text, weightKg) {
+      return mockWorkout(weightKg)
     },
     async coach(day, message) {
       return mockCoach(day, message)

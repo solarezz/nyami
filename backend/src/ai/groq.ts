@@ -1,4 +1,4 @@
-import type { Recognition, DaySummary, RecognizeRequest } from '@nyami/shared'
+import type { Recognition, DaySummary, RecognizeRequest, WorkoutRecognition } from '@nyami/shared'
 import { config } from '../config.js'
 import { offLookup } from './off.js'
 
@@ -193,12 +193,64 @@ export async function groqRecognize(input: RecognizeRequest): Promise<Recognitio
   return toRecognition(reco)
 }
 
+const WORKOUT_SYSTEM = `Ты — спортивный физиолог. По описанию тренировки оцени, сколько килокалорий сжёг человек.
+
+КАК СЧИТАТЬ:
+- Используй формулу через MET: ккал ≈ MET × вес(кг) × часы. Вес пользователя дан ниже.
+- Ориентиры MET: спокойная ходьба 3.0; быстрая ходьба 4.3; бег трусцой 7.0; быстрый бег 9.8;
+  велосипед умеренно 6.8; плавание 6.0–8.0; силовая тренировка 3.5–6.0; йога 2.5; HIIT 8–10;
+  футбол 7.0; танцы 5.0; прыжки на скакалке 11.
+- Если длительность НЕ указана — прими разумную по умолчанию (силовая ~45 мин, бег ~30 мин, прогулка ~30 мин)
+  и поставь confidence пониже (~0.5).
+- Оцени реалистично, не завышай.
+
+Отвечай СТРОГО валидным JSON без пояснений:
+{
+  "name": "короткое название по-русски (напр. «Бег», «Силовая», «Велосипед»)",
+  "emoji": "один эмодзи спорта",
+  "minutes": число,        // длительность в минутах
+  "kcal": число,           // сожжено килокалорий
+  "confidence": число 0..1
+}`
+
+interface RawWorkout {
+  name: string
+  emoji: string
+  minutes: number
+  kcal: number
+  confidence: number
+}
+
+export async function groqWorkout(text: string, weightKg: number): Promise<WorkoutRecognition> {
+  const raw = await groqChat(
+    [
+      { role: 'system', content: WORKOUT_SYSTEM },
+      { role: 'user', content: `Вес пользователя: ${weightKg} кг.\nТренировка: ${text}` },
+    ],
+    config.groqTextModel,
+    { jsonMode: true },
+  )
+  const clean = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+  const start = clean.indexOf('{')
+  const end = clean.lastIndexOf('}')
+  const json = start >= 0 && end > start ? clean.slice(start, end + 1) : clean
+  const p = JSON.parse(json) as Partial<RawWorkout>
+  return {
+    name: String(p.name ?? 'Тренировка'),
+    emoji: String(p.emoji ?? '🏃').slice(0, 4),
+    minutes: Math.max(0, Math.round(num(p.minutes, 30))),
+    kcal: Math.max(0, Math.round(num(p.kcal))),
+    confidence: Math.min(1, Math.max(0, num(p.confidence, 0.6))),
+  }
+}
+
 export async function groqCoach(day: DaySummary, message: string): Promise<string> {
-  const left = day.goalKcal - day.eatenKcal
+  const left = day.goalKcal + day.burnedKcal - day.eatenKcal
   const m = day.macros
+  const burnedLine = day.burnedKcal > 0 ? `, сожжено на тренировках ${day.burnedKcal} (добавлено к остатку)` : ''
   const system = `Ты — Nyami, дружелюбный диетолог-коуч. Отвечай по-русски, кратко (1–3 предложения), поддерживающе, без морализаторства.
 Данные дня пользователя:
-- норма ${day.goalKcal} ккал, съедено ${day.eatenKcal}, осталось ${left} ккал
+- норма ${day.goalKcal} ккал, съедено ${day.eatenKcal}${burnedLine}, осталось ${left} ккал
 - белки ${m.protein.eaten}/${m.protein.goal} г, жиры ${m.fat.eaten}/${m.fat.goal} г, углеводы ${m.carbs.eaten}/${m.carbs.goal} г
 Если спрашивают «можно ли съесть X» — прикинь калорийность X, скажи, впишется ли в остаток, и как это повлияет на остаток дня. Числа приводи конкретно.`
 

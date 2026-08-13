@@ -11,8 +11,8 @@ export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => 
   const { askCoach } = useData()
   // Коуч всегда про СЕГОДНЯ (независимо от выбранного дня на «Сегодня»).
   const [today, setToday] = useState<DaySummary | null>(null)
-  const left = today ? today.goalKcal - today.eatenKcal : 0
-  const frac = today ? today.eatenKcal / today.goalKcal : 0
+  const left = today ? today.goalKcal + today.burnedKcal - today.eatenKcal : 0
+  const frac = today ? today.eatenKcal / (today.goalKcal + today.burnedKcal) : 0
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -21,7 +21,7 @@ export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => 
   useEffect(() => {
     api.getDay().then((d) => {
       setToday(d)
-      const l = d.goalKcal - d.eatenKcal
+      const l = d.goalKcal + d.burnedKcal - d.eatenKcal
       setMessages([{ id: 'greet', role: 'coach', text: `Привет! На сегодня осталось **${l} ккал**. Спрашивай, если сомневаешься 🙂` }])
     }).catch(() => {
       setMessages([{ id: 'greet', role: 'coach', text: 'Привет! Спрашивай про питание — помогу 🙂' }])

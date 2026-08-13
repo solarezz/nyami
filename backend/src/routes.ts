@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type {
   MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition, UpdateFastingRequest,
+  AddWorkoutRequest, RecognizeWorkoutRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
 import { type NyamiRepo, todayKey } from './repo.js'
@@ -42,6 +43,22 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     api.delete<{ Params: { id: string } }>('/api/meals/:id', async (req) => {
       await repo.deleteMeal(req.user.id, req.params.id)
+      return { ok: true }
+    })
+
+    // Тренировка: оценка сожжённых калорий по описанию (нужен вес пользователя для MET).
+    api.post<{ Body: RecognizeWorkoutRequest }>('/api/workout/recognize', async (req) => {
+      const profile = await repo.getProfile(req.user.id)
+      return ai.recognizeWorkout(req.body.text, profile.weightKg)
+    })
+
+    api.post<{ Body: AddWorkoutRequest & { date?: string } }>('/api/workouts', async (req) => {
+      const { date, ...workout } = req.body
+      return repo.addWorkout(req.user.id, workout, dayParam(date))
+    })
+
+    api.delete<{ Params: { id: string } }>('/api/workouts/:id', async (req) => {
+      await repo.deleteWorkout(req.user.id, req.params.id)
       return { ok: true }
     })
 

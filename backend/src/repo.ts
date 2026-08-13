@@ -1,5 +1,6 @@
 import type {
   DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType, UpdateFastingRequest,
+  Workout, AddWorkoutRequest,
 } from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
 
@@ -24,6 +25,8 @@ export interface NyamiRepo {
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
   addMeal(userId: number, meal: AddMealRequest, date: string): Promise<Meal>
   deleteMeal(userId: number, mealId: string): Promise<void>
+  addWorkout(userId: number, workout: AddWorkoutRequest, date: string): Promise<Workout>
+  deleteWorkout(userId: number, workoutId: string): Promise<void>
   setWater(userId: number, glasses: number, date: string): Promise<number>
   getFrequent(userId: number): Promise<FrequentMeal[]>
   /** ID всех прошедших онбординг пользователей — для рассылок. */
@@ -76,9 +79,11 @@ const defaultProfile: Profile = {
 }
 
 type StoredMeal = Meal & { eatenAt: string }
+type StoredWorkout = Workout & { doneAt: string }
 
 export function createMockRepo(): NyamiRepo {
   const meals = new Map<number, StoredMeal[]>()
+  const workouts = new Map<number, StoredWorkout[]>()
   const water = new Map<number, Map<string, number>>() // userId -> date -> glasses
   const weights = new Map<number, number[]>()
   const profiles = new Map<number, Profile>()
@@ -87,6 +92,10 @@ export function createMockRepo(): NyamiRepo {
   const getMeals = (u: number) => {
     if (!meals.has(u)) meals.set(u, [])
     return meals.get(u)!
+  }
+  const getWorkouts = (u: number) => {
+    if (!workouts.has(u)) workouts.set(u, [])
+    return workouts.get(u)!
   }
   const getProfileFor = (u: number) => profiles.get(u) ?? defaultProfile
 
@@ -122,10 +131,12 @@ export function createMockRepo(): NyamiRepo {
       const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
       const p = getProfileFor(u)
       const dates = new Set(all.map((m) => m.eatenAt.slice(0, 10)))
+      const wkList = getWorkouts(u).filter((w) => w.doneAt.slice(0, 10) === date)
       return {
         date,
         eatenKcal: sum('kcal'),
         goalKcal: p.dailyKcal,
+        burnedKcal: wkList.reduce((s, w) => s + w.kcal, 0),
         macros: {
           protein: { eaten: sum('protein'), goal: p.protein },
           fat: { eaten: sum('fat'), goal: p.fat },
@@ -134,6 +145,7 @@ export function createMockRepo(): NyamiRepo {
         water: { done: water.get(u)?.get(date) ?? 0, goal: WATER_GOAL },
         streak: computeStreak(dates),
         meals: list.map(stripInternal),
+        workouts: wkList.map(stripWorkout),
       }
     },
 
@@ -166,6 +178,23 @@ export function createMockRepo(): NyamiRepo {
       meals.set(u, getMeals(u).filter((m) => m.id !== mealId))
     },
 
+    async addWorkout(u, req, date) {
+      const now = new Date()
+      const doneAt = date === todayKey() ? now.toISOString() : `${date}T${now.toISOString().slice(11)}`
+      const w: StoredWorkout = {
+        id: `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+        time: hhmm(new Date(doneAt)),
+        doneAt,
+        ...req,
+      }
+      getWorkouts(u).push(w)
+      return stripWorkout(w)
+    },
+
+    async deleteWorkout(u, workoutId) {
+      workouts.set(u, getWorkouts(u).filter((w) => w.id !== workoutId))
+    },
+
     async setWater(u, glasses, date) {
       const clamped = Math.max(0, Math.min(20, Math.round(glasses)))
       if (!water.has(u)) water.set(u, new Map())
@@ -186,6 +215,12 @@ export function createMockRepo(): NyamiRepo {
 // В моке храним eatenAt как служебное поле; наружу отдаём чистый Meal.
 function stripInternal(m: StoredMeal): Meal {
   const { eatenAt: _drop, ...rest } = m
+  void _drop
+  return rest
+}
+
+function stripWorkout(w: StoredWorkout): Workout {
+  const { doneAt: _drop, ...rest } = w
   void _drop
   return rest
 }

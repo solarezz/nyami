@@ -36,6 +36,17 @@ export const weights = pgTable('weights', {
   at: timestamp('at').notNull().defaultNow(),
 })
 
+// Тренировки: сожжённые калории (замена шагам). Оценивает ИИ по описанию.
+export const workouts = pgTable('workouts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
+  name: text('name').notNull(),
+  emoji: text('emoji').notNull().default('🏃'),
+  minutes: integer('minutes').notNull().default(0),
+  kcal: integer('kcal').notNull(),
+  doneAt: timestamp('done_at').notNull().defaultNow(),
+})
+
 export const meals = pgTable('meals', {
   id: uuid('id').primaryKey().defaultRandom(),
   telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),

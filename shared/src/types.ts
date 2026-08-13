@@ -23,14 +23,25 @@ export interface Meal {
   fat: number
 }
 
+export interface Workout {
+  id: string
+  name: string
+  emoji: string
+  minutes: number
+  kcal: number // сожжено
+  time: string
+}
+
 export interface DaySummary {
   date: string
   eatenKcal: number
   goalKcal: number
+  burnedKcal: number // сожжено на тренировках — увеличивает остаток
   macros: Record<MacroKey, MacroProgress>
   water: { done: number; goal: number }
   streak: number
   meals: Meal[]
+  workouts: Workout[]
 }
 
 export interface Profile {
@@ -104,6 +115,26 @@ export interface AddMealRequest {
   protein: number
   carbs: number
   fat: number
+}
+
+export interface AddWorkoutRequest {
+  name: string
+  emoji: string
+  minutes: number
+  kcal: number
+}
+
+export interface RecognizeWorkoutRequest {
+  text: string
+}
+
+/** Оценка тренировки ИИ (черновик перед добавлением). */
+export interface WorkoutRecognition {
+  name: string
+  emoji: string
+  minutes: number
+  kcal: number // сожжено
+  confidence: number // 0..1
 }
 
 export interface RecognizeRequest {
