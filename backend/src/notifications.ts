@@ -1,4 +1,5 @@
 import cron from 'node-cron'
+import type { MealType } from '@nyami/shared'
 import { config } from './config.js'
 import { type NyamiRepo, todayKey } from './repo.js'
 
@@ -26,12 +27,84 @@ export async function sendMessage(chatId: number, text: string): Promise<void> {
   })
 }
 
-/** Вечернее напоминание — только тем, кто сегодня ещё ничего не записал. */
-export async function runDailyFor(repo: NyamiRepo, userId: number): Promise<boolean> {
-  const day = await repo.getDay(userId, todayKey())
-  if (day.meals.length > 0) return false
-  await sendMessage(userId, '🍽 Ты сегодня ещё ничего не записал.\nОтметь приёмы, чтобы не потерять стрик!')
-  return true
+// ---- Напоминания о пропущенных приёмах пищи ----
+//
+// Идея: у каждого типа приёма — «личный средний час» (по последним записям), а пока
+// истории мало — разумный дефолт. Раз в 15 минут (MSK) проверяем каждого юзера и,
+// если время+буфер прошло, а приём не залогирован — шлём НЕ БОЛЬШЕ ОДНОГО напоминания
+// за проход (самый ранний просроченный тип). Факт отправки пишем в БД — переживает
+// передеплой контейнера и не даёт задублировать сообщение.
+
+const MEAL_ORDER: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+const MEAL_LABELS: Record<MealType, string> = { breakfast: 'завтрак', lunch: 'обед', dinner: 'ужин', snack: 'перекус' }
+
+// Дефолт на холодный старт (мин. от полуночи MSK). У перекуса дефолта нет —
+// напоминаем про него только когда сложилась личная привычка (см. mealThreshold).
+const MEAL_DEFAULT_MIN: Record<MealType, number | null> = {
+  breakfast: 10 * 60,
+  lunch: 15 * 60,
+  dinner: 20 * 60 + 30,
+  snack: null,
+}
+
+const MIN_SAMPLES = 3 // сколько записей нужно, чтобы доверять личному среднему
+const GRACE_MIN = 45 // буфер после порога, прежде чем напоминать
+const RECENT_LIMIT = 10 // сколько последних записей типа берём для среднего
+
+function moscowMinutesOfDay(d: Date): number {
+  // Россия — фиксированный UTC+3 без перехода на летнее время.
+  return (d.getUTCHours() * 60 + d.getUTCMinutes() + 180) % 1440
+}
+
+function moscowMinutesNow(): number {
+  return moscowMinutesOfDay(new Date())
+}
+
+/** Порог (мин. от полуночи MSK) — когда пора напомнить про этот тип; null — рано/не нужно. */
+async function mealThreshold(repo: NyamiRepo, userId: number, type: MealType): Promise<number | null> {
+  const recent = await repo.recentMealTimes(userId, type, RECENT_LIMIT)
+  if (recent.length >= MIN_SAMPLES) {
+    const avg = recent.reduce((s, d) => s + moscowMinutesOfDay(d), 0) / recent.length
+    return Math.round(avg)
+  }
+  return MEAL_DEFAULT_MIN[type]
+}
+
+/** Проверяет одного пользователя; при необходимости шлёт одно напоминание. Возвращает тип отправленного или null. */
+export async function checkMealReminders(repo: NyamiRepo, userId: number, nowMin = moscowMinutesNow()): Promise<MealType | null> {
+  const date = todayKey()
+  const day = await repo.getDay(userId, date)
+  const logged = new Set(day.meals.map((m) => m.mealType))
+
+  for (const type of MEAL_ORDER) {
+    if (logged.has(type)) continue
+
+    // Перекус — необязательный приём: не предлагаем, если бюджет калорий уже исчерпан.
+    if (type === 'snack' && day.goalKcal + day.burnedKcal - day.eatenKcal <= 0) continue
+
+    const threshold = await mealThreshold(repo, userId, type)
+    if (threshold == null) continue
+    if (nowMin < threshold + GRACE_MIN) continue
+
+    const claimed = await repo.claimReminder(userId, date, type)
+    if (!claimed) continue // уже напоминали сегодня про этот тип
+
+    const firstOfDay = day.meals.length === 0
+    const text = firstOfDay
+      ? '🍽 Ты сегодня ещё ничего не отметил. Загляни в Nyami и запиши — это займёт 10 секунд, чтобы не терять стрик!'
+      : `⏰ Не забыл записать ${MEAL_LABELS[type]}? Обычно ты делаешь это примерно в это время.`
+    await sendMessage(userId, text)
+    return type
+  }
+  return null
+}
+
+async function runMealReminders(repo: NyamiRepo): Promise<void> {
+  const nowMin = moscowMinutesNow()
+  for (const id of await repo.getOnboardedUserIds()) {
+    await checkMealReminders(repo, id, nowMin)
+    await new Promise((r) => setTimeout(r, 60)) // мягкий троттлинг под лимиты Telegram
+  }
 }
 
 /** Недельный отчёт по данным пользователя. */
@@ -65,11 +138,11 @@ function plural(n: number, one: string, few: string, many: string): string {
   return many
 }
 
-/** Запуск планировщика (только в проде). Ежедневно 21:00 и по воскресеньям 20:00 MSK. */
+/** Запуск планировщика (только в проде). Напоминания — раз в 15 мин, отчёт — по воскресеньям 20:00 MSK. */
 export function startScheduler(repo: NyamiRepo): void {
   if (!config.botToken) return
 
-  cron.schedule('0 21 * * *', () => forEachUser(repo, runDailyFor), { timezone: TZ })
+  cron.schedule('*/15 * * * *', () => runMealReminders(repo).catch((e) => console.error('[notify] meal reminders failed:', e)), { timezone: TZ })
   cron.schedule('0 20 * * 0', () => forEachUser(repo, runWeeklyFor), { timezone: TZ })
 }
 

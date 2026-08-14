@@ -36,6 +36,15 @@ export const weights = pgTable('weights', {
   at: timestamp('at').notNull().defaultNow(),
 })
 
+// Факт отправки напоминания о пропущенном приёме пищи. Не даёт слать дважды за
+// день+тип (важно при частых передеплоях — cron не должен задублировать сообщение).
+export const mealReminders = pgTable('meal_reminders', {
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
+  date: text('date').notNull(), // YYYY-MM-DD (UTC, как и days)
+  mealType: text('meal_type').notNull(),
+  sentAt: timestamp('sent_at').notNull().defaultNow(),
+}, (t) => ({ pk: primaryKey({ columns: [t.telegramId, t.date, t.mealType] }) }))
+
 // Тренировки: сожжённые калории (замена шагам). Оценивает ИИ по описанию.
 export const workouts = pgTable('workouts', {
   id: uuid('id').primaryKey().defaultRandom(),

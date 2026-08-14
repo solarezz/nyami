@@ -5,7 +5,7 @@ import {
 } from '../repo.js'
 import { computeNorm } from '../nutrition.js'
 import { db, type Db } from './client.js'
-import { users, meals, days, weights, workouts } from './schema.js'
+import { users, meals, days, weights, workouts, mealReminders } from './schema.js'
 
 export function createDrizzleRepo(): NyamiRepo {
   const database = db as Db // конструируется только при заданном DATABASE_URL
@@ -173,6 +173,25 @@ export function createDrizzleRepo(): NyamiRepo {
         .where(eq(meals.telegramId, userId))
         .orderBy(desc(meals.eatenAt)).limit(200)
       return topFrequent(rows)
+    },
+
+    async recentMealTimes(userId, mealType, limit) {
+      const rows = await database
+        .select({ at: meals.eatenAt })
+        .from(meals)
+        .where(and(eq(meals.telegramId, userId), eq(meals.mealType, mealType)))
+        .orderBy(desc(meals.eatenAt))
+        .limit(limit)
+      return rows.map((r) => r.at)
+    },
+
+    async claimReminder(userId, date, mealType) {
+      const inserted = await database
+        .insert(mealReminders)
+        .values({ telegramId: userId, date, mealType })
+        .onConflictDoNothing()
+        .returning()
+      return inserted.length > 0
     },
 
     async getOnboardedUserIds() {

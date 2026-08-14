@@ -27,6 +27,10 @@ export interface NyamiRepo {
   deleteMeal(userId: number, mealId: string): Promise<void>
   addWorkout(userId: number, workout: AddWorkoutRequest, date: string): Promise<Workout>
   deleteWorkout(userId: number, workoutId: string): Promise<void>
+  /** Последние по времени приёмы данного типа (для расчёта личного среднего времени). */
+  recentMealTimes(userId: number, mealType: MealType, limit: number): Promise<Date[]>
+  /** Атомарно «застолбить» отправку напоминания на день+тип. false — уже отправляли. */
+  claimReminder(userId: number, date: string, mealType: MealType): Promise<boolean>
   setWater(userId: number, glasses: number, date: string): Promise<number>
   /** Записать замер веса; возвращает последние 7 замеров (weightSeries). */
   setWeight(userId: number, weightKg: number): Promise<number[]>
@@ -90,6 +94,7 @@ export function createMockRepo(): NyamiRepo {
   const weights = new Map<number, number[]>()
   const profiles = new Map<number, Profile>()
   const onboardedSet = new Set<number>()
+  const remindersSent = new Map<number, Set<string>>() // userId -> {`date:mealType`}
 
   const getMeals = (u: number) => {
     if (!meals.has(u)) meals.set(u, [])
@@ -214,6 +219,23 @@ export function createMockRepo(): NyamiRepo {
 
     async getFrequent(u) {
       return topFrequent(getMeals(u))
+    },
+
+    async recentMealTimes(u, mealType, limit) {
+      return getMeals(u)
+        .filter((m) => m.mealType === mealType)
+        .sort((a, b) => b.eatenAt.localeCompare(a.eatenAt))
+        .slice(0, limit)
+        .map((m) => new Date(m.eatenAt))
+    },
+
+    async claimReminder(u, date, mealType) {
+      const key = `${date}:${mealType}`
+      if (!remindersSent.has(u)) remindersSent.set(u, new Set())
+      const set = remindersSent.get(u)!
+      if (set.has(key)) return false
+      set.add(key)
+      return true
     },
 
     async getOnboardedUserIds() {
