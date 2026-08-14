@@ -15,12 +15,16 @@ const PRESETS = [
   { emoji: '🏊', text: 'Плавание 30 минут' },
 ]
 
+const pad = (n: number) => String(n).padStart(2, '0')
+const nowHHMM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
+
 export function AddWorkout({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { recognizeWorkout, addWorkout } = useData()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState(false)
   const [est, setEst] = useState<WorkoutRecognition | null>(null)
+  const [time, setTime] = useState(nowHHMM)
   const textRef = useRef<HTMLTextAreaElement>(null)
 
   const estimate = async (q?: string) => {
@@ -46,7 +50,7 @@ export function AddWorkout({ onNavigate }: { onNavigate: (s: Screen) => void }) 
     if (!est || saving) return
     setSaving(true)
     try {
-      await addWorkout({ name: est.name, emoji: est.emoji, minutes: est.minutes, kcal: est.kcal })
+      await addWorkout({ name: est.name, emoji: est.emoji, minutes: est.minutes, kcal: est.kcal, time })
       onNavigate('today')
     } catch {
       setSaving(false)
@@ -88,6 +92,13 @@ export function AddWorkout({ onNavigate }: { onNavigate: (s: Screen) => void }) 
             </div>
             <div className="frow"><span className="muted">Длительность</span><span className="fv">{est.minutes} мин</span></div>
             <div className="frow"><span className="muted">Сожжено</span><span className="fv" style={{ color: 'var(--accent)' }}>{est.kcal} ккал</span></div>
+            <div className="frow">
+              <span className="muted">Время</span>
+              <input
+                type="time" className="fv" value={time} onChange={(e) => setTime(e.target.value)}
+                style={{ background: 'transparent', border: 'none', textAlign: 'right', color: 'var(--ink)', fontFamily: 'inherit' }}
+              />
+            </div>
           </div>
         )}
 

@@ -136,11 +136,16 @@ export function createDrizzleRepo(): NyamiRepo {
 
     async addWorkout(userId, req, date) {
       await ensureUser(userId)
+      // req.time — явно выбранное юзером время (HH:mm); иначе берём текущее.
+      const { time: reqTime, ...rest } = req
       const now = new Date()
-      const doneAt = date === todayKey() ? now : new Date(`${date}T${now.toISOString().slice(11)}`)
+      // reqTime — MSK-время с пикера; переводим в UTC явным смещением +03:00.
+      const doneAt = reqTime && /^\d{2}:\d{2}$/.test(reqTime)
+        ? new Date(`${date}T${reqTime}:00+03:00`)
+        : date === todayKey() ? now : new Date(`${date}T${now.toISOString().slice(11)}`)
       const inserted = await database
         .insert(workouts)
-        .values({ telegramId: userId, doneAt, ...req })
+        .values({ telegramId: userId, doneAt, ...rest })
         .returning()
       return toWorkout(inserted[0])
     },

@@ -132,6 +132,7 @@ export interface AddWorkoutRequest {
   emoji: string
   minutes: number
   kcal: number
+  time?: string // HH:mm — если не задано, берётся текущее время
 }
 
 export interface RecognizeWorkoutRequest {

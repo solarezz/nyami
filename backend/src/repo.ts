@@ -187,13 +187,18 @@ export function createMockRepo(): NyamiRepo {
     },
 
     async addWorkout(u, req, date) {
+      // req.time — явно выбранное юзером время (HH:mm); иначе берём текущее.
+      const { time: reqTime, ...rest } = req
       const now = new Date()
-      const doneAt = date === todayKey() ? now.toISOString() : `${date}T${now.toISOString().slice(11)}`
+      // reqTime — MSK-время с пикера; переводим в UTC явным смещением +03:00.
+      const doneAt = reqTime && /^\d{2}:\d{2}$/.test(reqTime)
+        ? `${date}T${reqTime}:00+03:00`
+        : date === todayKey() ? now.toISOString() : `${date}T${now.toISOString().slice(11)}`
       const w: StoredWorkout = {
         id: `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
         time: hhmm(new Date(doneAt)),
         doneAt,
-        ...req,
+        ...rest,
       }
       getWorkouts(u).push(w)
       return stripWorkout(w)
@@ -272,5 +277,7 @@ export function lastSevenDays(byDay: Map<string, number>, norm: number): WeekDay
 }
 
 export function hhmm(date: Date): string {
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  // Явно MSK — иначе формат зависит от таймзоны ОС сервера (в проде это обычно UTC),
+  // и «время» приёма/тренировки съезжает на несколько часов от реального московского.
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })
 }
