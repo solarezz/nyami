@@ -168,8 +168,9 @@ export async function groqRecognize(input: RecognizeRequest): Promise<Recognitio
           { role: 'user', content: userContent },
         ],
         model,
-        // Vision-модель (qwen) — reasoning-модель: прячем <think>. Текстовая — строгий JSON-режим.
-        hasImage ? { reasoningFormat: 'hidden' } : { jsonMode: true },
+        // Обе модели (qwen и gpt-oss-120b) — reasoning-модели: прячем цепочку рассуждений.
+        // Текстовая дополнительно — строгий JSON-режим.
+        hasImage ? { reasoningFormat: 'hidden' } : { jsonMode: true, reasoningFormat: 'hidden' },
       )
       reco = coerceRaw(raw, input.text)
     } catch (e) {
@@ -228,7 +229,7 @@ export async function groqWorkout(text: string, weightKg: number): Promise<Worko
       { role: 'user', content: `Вес пользователя: ${weightKg} кг.\nТренировка: ${text}` },
     ],
     config.groqTextModel,
-    { jsonMode: true },
+    { jsonMode: true, reasoningFormat: 'hidden' },
   )
   const clean = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   const start = clean.indexOf('{')
@@ -260,6 +261,8 @@ export async function groqCoach(day: DaySummary, message: string): Promise<strin
       { role: 'user', content: message },
     ],
     config.groqTextModel,
+    { reasoningFormat: 'hidden' },
   )
-  return reply.trim()
+  // Страховка на случай, если reasoning_format не полностью скрыл цепочку рассуждений.
+  return reply.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
 }

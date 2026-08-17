@@ -14,7 +14,8 @@ export const config = {
   groqApiKey,
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   groqVisionModel: process.env.GROQ_VISION_MODEL ?? 'qwen/qwen3.6-27b',
-  groqTextModel: process.env.GROQ_TEXT_MODEL ?? 'llama-3.3-70b-versatile',
+  // llama-3.3-70b-versatile снят Groq с поддержки (model_not_found) — заменён на gpt-oss-120b.
+  groqTextModel: process.env.GROQ_TEXT_MODEL ?? 'openai/gpt-oss-120b',
 
   // FatSecret Platform API (OAuth2 client credentials) — большая база по штрихкодам.
   fatsecretId: process.env.FATSECRET_CLIENT_ID ?? '',
