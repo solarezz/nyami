@@ -53,6 +53,7 @@ export function AddWorkout({ onNavigate }: { onNavigate: (s: Screen) => void }) 
       await addWorkout({ name: est.name, emoji: est.emoji, minutes: est.minutes, kcal: est.kcal, time })
       onNavigate('today')
     } catch {
+      showAlert('Не удалось добавить тренировку. Попробуй ещё раз.')
       setSaving(false)
     }
   }
