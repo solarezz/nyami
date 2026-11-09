@@ -296,41 +296,51 @@ function MealCard({
   const multi = meal.items.length > 1
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div className="meal" style={{ cursor: multi ? 'pointer' : undefined }} onClick={multi ? () => setOpen((v) => !v) : undefined}>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button" className="meal" style={{ cursor: multi ? 'pointer' : 'default' }}
+        onClick={multi ? () => setOpen((v) => !v) : undefined}
+        aria-expanded={multi ? open : undefined}
+      >
         <div className="thumb" style={{ background: bg }}>{meal.emoji}</div>
         <div className="mm">
-          <div className="nm">{meal.name}{multi && <span className="muted" style={{ fontWeight: 700, marginLeft: 6 }}>· {meal.items.length} компонента {open ? '▴' : '▾'}</span>}</div>
+          <div className="nm">{meal.name}</div>
           <div className="chips">
             <span><i style={{ background: 'var(--prot)' }} />{meal.protein} Б</span>
             <span><i style={{ background: 'var(--carb)' }} />{meal.carbs} У</span>
             <span><i style={{ background: 'var(--fat)' }} />{meal.fat} Ж</span>
+            {multi && <span className="muted">· {meal.items.length} компонента</span>}
           </div>
         </div>
         <div className="rt">
           <div className="kc">{meal.kcal}<small> ккал</small></div>
           <div className="tm">{meal.time}</div>
         </div>
-        <button className="del" onClick={(e) => { e.stopPropagation(); onDelete() }} aria-label="Удалить"><Icon name="trash" /></button>
-      </div>
+        {multi && <Icon name="chev" style={{ width: 16, height: 16, transform: `rotate(${open ? -90 : 90}deg)`, color: 'var(--text-secondary)', flex: 'none' }} />}
+        <span
+          role="button" tabIndex={0} className="del" aria-label="Удалить приём"
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); onDelete() } }}
+        >
+          <Icon name="trash" />
+        </span>
+      </button>
 
       {open && (
-        <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="meal-items fade">
           {meal.items.map((it) => (
-            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-              <span style={{ fontSize: 18 }}>{it.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{it.name}</div>
-                <span className="muted" style={{ fontSize: 12 }}>{it.kcal} ккал</span>
+            <div key={it.id} className="meal-item-row">
+              <span className="meal-item-emoji">{it.emoji}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="meal-item-name">{it.name}</div>
+                <span className="muted" style={{ fontSize: 12 }}>{it.kcal} ккал · {it.grams} г</span>
               </div>
-              <div style={{ width: 150 }}>
-                <NumberField label="" value={it.grams} min={1} max={2000} step={10} onChange={(g) => onChangeItemGrams(it.id, g)} />
-              </div>
-              <button className="del" onClick={() => onDeleteItem(it.id)} aria-label="Удалить компонент"><Icon name="trash" /></button>
+              <NumberField compact value={it.grams} min={1} max={2000} step={10} onChange={(g) => onChangeItemGrams(it.id, g)} label={`Масса «${it.name}»`} />
+              <button className="del" onClick={() => onDeleteItem(it.id)} aria-label={`Удалить «${it.name}»`}><Icon name="trash" /></button>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </Card>
   )
 }

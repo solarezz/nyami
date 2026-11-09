@@ -80,6 +80,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .meal .del .ic{width:18px;height:18px;}
 .meal .del:active{color:var(--prot);}
 
+/* ---- Компоненты приёма пищи (раскрывающийся список под .meal) ---- */
+.meal-items{display:flex;flex-direction:column;padding:2px 14px 12px;}
+.meal-item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);}
+.meal-item-emoji{font-size:18px;flex:none;line-height:1;}
+.meal-item-name{font-weight:700;font-size:13px;line-height:1.25;}
+.meal-items .del{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;color:var(--text-secondary);flex:none;background:var(--scr);}
+.meal-items .del .ic{width:15px;height:15px;}
+.meal-items .del:active{color:var(--danger);}
+
 .nav{position:sticky;bottom:0;margin:6px -16px 0;height:calc(70px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding:0 16px calc(8px + env(safe-area-inset-bottom));}
 .nav .ni{color:var(--sub);background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 8px;}
 .nav .ni.on{color:var(--accent);}

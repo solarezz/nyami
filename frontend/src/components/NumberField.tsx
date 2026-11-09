@@ -5,15 +5,17 @@ import { haptic } from '../telegram'
 // Числовое поле: −/+ степперы и свободный ввод. Кламп применяется ТОЛЬКО при
 // потере фокуса (не на каждый символ) — поэтому ввод не «прыгает».
 export function NumberField({
-  label, value, min, max, step = 1, decimals = 0, onChange,
+  label, value, min, max, step = 1, decimals = 0, onChange, compact,
 }: {
-  label: string
+  label?: string
   value: number
   min: number
   max: number
   step?: number
   decimals?: number
   onChange: (v: number) => void
+  /** Без обёртки .frow и подписи — плотная строка внутри списка (напр. компоненты приёма). */
+  compact?: boolean
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   const clamp = (n: number) => Math.max(min, Math.min(max, n))
@@ -30,21 +32,27 @@ export function NumberField({
     setDraft(null)
   }
 
+  const field = (
+    <div className="numfield">
+      <button onClick={() => bump(-step)} aria-label={label ? `${label}: меньше` : 'Меньше'}><Icon name="minus" /></button>
+      <input
+        type="text" inputMode="decimal"
+        value={draft ?? String(value)}
+        onFocus={() => setDraft(String(value))}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      />
+      <button onClick={() => bump(step)} aria-label={label ? `${label}: больше` : 'Больше'}><Icon name="plus" /></button>
+    </div>
+  )
+
+  if (compact) return field
+
   return (
     <div className="frow">
       <span className="muted">{label}</span>
-      <div className="numfield">
-        <button onClick={() => bump(-step)} aria-label="Меньше"><Icon name="minus" /></button>
-        <input
-          type="text" inputMode="decimal"
-          value={draft ?? String(value)}
-          onFocus={() => setDraft(String(value))}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        />
-        <button onClick={() => bump(step)} aria-label="Больше"><Icon name="plus" /></button>
-      </div>
+      {field}
     </div>
   )
 }
