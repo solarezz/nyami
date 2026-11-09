@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icons'
+import { Button } from '../components/ui/Button'
 import { AiOverlay } from '../components/AiOverlay'
 import { BarcodeScanner } from '../components/BarcodeScanner'
 import { api } from '../api'
@@ -145,12 +146,12 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         )}
 
         <div style={{ flex: 1 }} />
-        <button
-          className={`btn${text.trim() ? '' : ' ghost'}`} onClick={onRecognizeText}
-          disabled={busy !== false} style={busy ? { opacity: 0.7 } : undefined}
+        <Button
+          variant={text.trim() ? 'primary' : 'ghost'} icon="spark" onClick={onRecognizeText}
+          disabled={busy !== false} loading={busy === 'text'} loadingText="Распознаю…"
         >
-          <Icon name="spark" />{busy === 'text' ? 'Распознаю…' : 'Распознать через ИИ'}
-        </button>
+          Распознать через ИИ
+        </Button>
         <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>Оценка ИИ · погрешность ±15%</div>
       </div>
       </div>

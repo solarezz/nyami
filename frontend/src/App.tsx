@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { IconSprite } from './components/Icons'
+import { Button } from './components/ui/Button'
+import { TodaySkeleton } from './components/ui/Skeleton'
+import { ToastProvider } from './components/ui/Toast'
 import { DataProvider, useData } from './data/store'
 import { setBackButton } from './telegram'
 import { Onboarding } from './screens/Onboarding'
@@ -18,7 +21,9 @@ export function App() {
     <div className="app">
       <IconSprite />
       <DataProvider>
-        <Root />
+        <ToastProvider>
+          <Root />
+        </ToastProvider>
       </DataProvider>
     </div>
   )
@@ -27,7 +32,7 @@ export function App() {
 function Root() {
   const { loading, error, onboarded, retry } = useData()
 
-  if (loading) return <Splash text="Загружаем…" />
+  if (loading) return <TodaySkeleton />
   if (error) return <ErrorScreen onRetry={retry} />
 
   return <Router startOnboarding={!onboarded} />
@@ -40,7 +45,7 @@ function ErrorScreen({ onRetry }: { onRetry: () => void }) {
       <div style={{ color: 'var(--sub)', fontWeight: 600, maxWidth: 280 }}>
         Не удалось подключиться. Проверь интернет и попробуй ещё раз.
       </div>
-      <button className="btn" style={{ maxWidth: 240 }} onClick={onRetry}>Повторить</button>
+      <Button style={{ maxWidth: 240 }} onClick={onRetry}>Повторить</Button>
     </div>
   )
 }
@@ -68,13 +73,5 @@ function Router({ startOnboarding }: { startOnboarding: boolean }) {
       {screen === 'progress' && <Progress onNavigate={setScreen} />}
       {screen === 'profile' && <Profile onNavigate={setScreen} />}
     </>
-  )
-}
-
-function Splash({ text }: { text: string }) {
-  return (
-    <div className="screen" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'pre-line', color: 'var(--sub)', fontWeight: 800 }}>
-      {text}
-    </div>
   )
 }

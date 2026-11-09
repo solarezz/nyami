@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Icon } from '../components/Icons'
 import { NumberField } from '../components/NumberField'
+import { Button } from '../components/ui/Button'
 import { useData } from '../data/store'
 import type { Screen } from '../App'
 
@@ -15,7 +15,7 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   if (!pending) {
     return (
       <div className="screen" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <button className="btn" style={{ maxWidth: 240 }} onClick={() => onNavigate('add')}>Добавить еду</button>
+        <Button style={{ maxWidth: 240 }} onClick={() => onNavigate('add')}>Добавить еду</Button>
       </div>
     )
   }
@@ -98,10 +98,10 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         ))}
 
         <div style={{ flex: 1 }} />
-        <button className="btn" onClick={confirm} disabled={saving} style={saving ? { opacity: 0.7 } : undefined}>
-          <Icon name="check" />{saving ? 'Добавляю…' : `Добавить · ${total} ккал`}
-        </button>
-        <button className="btn ghost" onClick={() => onNavigate('add')}>Заново</button>
+        <Button icon="check" onClick={confirm} disabled={saving} loading={saving} loadingText="Добавляю…">
+          Добавить · {total} ккал
+        </Button>
+        <Button variant="ghost" onClick={() => onNavigate('add')}>Заново</Button>
       </div>
     </div>
   )

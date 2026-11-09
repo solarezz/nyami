@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Icon } from '../components/Icons'
+import { Button } from '../components/ui/Button'
 import { AiOverlay } from '../components/AiOverlay'
 import { useData } from '../data/store'
 import { haptic, showAlert } from '../telegram'
@@ -106,15 +106,15 @@ export function AddWorkout({ onNavigate }: { onNavigate: (s: Screen) => void }) 
         <div style={{ flex: 1 }} />
         {est ? (
           <>
-            <button className="btn" onClick={confirm} disabled={saving} style={saving ? { opacity: 0.7 } : undefined}>
-              <Icon name="check" />{saving ? 'Добавляю…' : `Добавить · +${est.kcal} ккал к остатку`}
-            </button>
-            <button className="btn ghost" onClick={() => setEst(null)} disabled={saving}>Оценить заново</button>
+            <Button icon="check" onClick={confirm} disabled={saving} loading={saving} loadingText="Добавляю…">
+              Добавить · +{est.kcal} ккал к остатку
+            </Button>
+            <Button variant="ghost" onClick={() => setEst(null)} disabled={saving}>Оценить заново</Button>
           </>
         ) : (
-          <button className="btn" onClick={() => estimate()} disabled={busy} style={busy ? { opacity: 0.7 } : undefined}>
-            <Icon name="spark" />{busy ? 'Оцениваю…' : 'Оценить через ИИ'}
-          </button>
+          <Button icon="spark" onClick={() => estimate()} disabled={busy} loading={busy} loadingText="Оцениваю…">
+            Оценить через ИИ
+          </Button>
         )}
         <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>Сожжённые калории добавляются к дневному остатку</div>
       </div>

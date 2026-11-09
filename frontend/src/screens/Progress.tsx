@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { Icon } from '../components/Icons'
 import { NumberField } from '../components/NumberField'
 import { BottomNav } from '../components/BottomNav'
+import { Button } from '../components/ui/Button'
+import { useToast } from '../components/ui/Toast'
 import { useData } from '../data/store'
 import type { Screen } from '../App'
 
 export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { day, week, me, setWeight } = useData()
+  const toast = useToast()
   const [logging, setLogging] = useState(false)
   const [draft, setDraft] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -38,6 +41,7 @@ export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     try {
       await setWeight(draft)
       setLogging(false)
+      toast('Вес сохранён', 'success')
     } finally {
       setSaving(false)
     }
@@ -103,9 +107,9 @@ export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             {logging ? (
               <div style={{ marginTop: 4 }}>
                 <NumberField label="Текущий, кг" value={draft} min={20} max={400} decimals={1} onChange={setDraft} />
-                <button className="btn" style={{ height: 44, marginTop: 8 }} onClick={saveWeight} disabled={saving}>
-                  {saving ? 'Сохраняю…' : 'Сохранить'}
-                </button>
+                <Button size="sm" style={{ marginTop: 8 }} onClick={saveWeight} loading={saving} loadingText="Сохраняю…">
+                  Сохранить
+                </Button>
               </div>
             ) : hasWeight ? (
               <>

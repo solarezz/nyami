@@ -5,6 +5,9 @@ import { NumberField } from '../components/NumberField'
 import { RingStat } from '../components/Ring'
 import { FastingCard } from '../components/FastingCard'
 import { BottomNav } from '../components/BottomNav'
+import { Card } from '../components/ui/Card'
+import { MetricCard } from '../components/ui/MetricCard'
+import { EmptyState } from '../components/ui/EmptyState'
 import { useData, todayStr } from '../data/store'
 import { haptic, showAlert, showConfirm } from '../telegram'
 import type { Screen } from '../App'
@@ -165,14 +168,14 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             const frac = mp.goal ? mp.eaten / mp.goal : 0
             const rest = Math.max(0, mp.goal - mp.eaten)
             return (
-              <div className="mcard" key={m.key}>
+              <MetricCard key={m.key}>
                 <div className="em">{m.emoji}</div>
                 <RingStat
                   progress={frac} color={m.color} track={m.track} size={64} stroke={9}
                   label={<span style={{ fontSize: 15, color: 'var(--ink)' }}>{Math.round(frac * 100)}%</span>}
                 />
                 <div className="rest">{rest} г · {m.label}</div>
-              </div>
+              </MetricCard>
             )
           })}
         </div>
@@ -207,13 +210,13 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         </div>
 
         {d.meals.length === 0 && (
-          <button
-            className="card" onClick={() => addToGroup('breakfast')}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 18px', color: 'var(--sub)', fontWeight: 700, textAlign: 'center' }}
-          >
-            <span style={{ fontSize: 30 }}>🍳</span>
-            {isToday ? 'Добавь первый приём — фото, текст или штрихкод' : 'В этот день приёмов не было'}
-          </button>
+          <Card onClick={() => addToGroup('breakfast')} ariaLabel="Добавить первый приём пищи">
+            <EmptyState
+              emoji="🍳"
+              title={isToday ? 'Добавь первый приём' : 'В этот день приёмов не было'}
+              subtitle={isToday ? 'Фото, текст или штрихкод' : undefined}
+            />
+          </Card>
         )}
 
         {d.meals.length > 0 && MEAL_GROUPS.map((g) => {
@@ -247,9 +250,9 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
         </div>
 
         {d.workouts.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', color: 'var(--sub)', fontWeight: 800, padding: '18px' }}>
-            Добавь тренировку — калории пойдут в плюс к остатку 💪
-          </div>
+          <Card>
+            <EmptyState emoji="💪" title="Добавь тренировку" subtitle="Калории пойдут в плюс к остатку" />
+          </Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             {d.workouts.map((w) => (

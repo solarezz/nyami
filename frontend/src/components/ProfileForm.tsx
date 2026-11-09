@@ -2,17 +2,20 @@ import { useState } from 'react'
 import type { UpdateProfileRequest } from '@nyami/shared'
 import { computeNorm } from '../utils/nutrition'
 import { NumberField } from './NumberField'
+import { Tabs } from './ui/Tabs'
+import { Select } from './ui/Select'
+import { Button } from './ui/Button'
 
 const ACTIVITIES = [
-  { key: 'low', label: 'Низкая' },
-  { key: 'medium', label: 'Средняя' },
-  { key: 'high', label: 'Высокая' },
+  { value: 'low', label: 'Низкая' },
+  { value: 'medium', label: 'Средняя' },
+  { value: 'high', label: 'Высокая' },
 ] as const
 
 const GOALS = [
-  { key: 'lose', label: 'Похудеть' },
-  { key: 'maintain', label: 'Держать' },
-  { key: 'gain', label: 'Набрать' },
+  { value: 'lose', label: 'Похудеть' },
+  { value: 'maintain', label: 'Держать' },
+  { value: 'gain', label: 'Набрать' },
 ] as const
 
 export function ProfileForm({
@@ -41,10 +44,10 @@ export function ProfileForm({
 
   return (
     <>
-      <div className="seg">
-        <button type="button" className={v.sex === 'male' ? 'on' : ''} onClick={() => set('sex', 'male')}>Мужской</button>
-        <button type="button" className={v.sex === 'female' ? 'on' : ''} onClick={() => set('sex', 'female')}>Женский</button>
-      </div>
+      <Tabs
+        options={[{ value: 'male', label: 'Мужской' }, { value: 'female', label: 'Женский' }]}
+        value={v.sex} onChange={(sex) => set('sex', sex)}
+      />
 
       <div className="card" style={{ padding: '4px 18px' }}>
         <NumberField label="Возраст" value={v.age} min={5} max={120} onChange={(n) => set('age', n)} />
@@ -52,19 +55,8 @@ export function ProfileForm({
         <NumberField label="Вес, кг" value={v.weightKg} min={20} max={400} decimals={1} onChange={(n) => set('weightKg', n)} />
       </div>
 
-      <div className="tiny">Активность</div>
-      <div className="chips">
-        {ACTIVITIES.map((a) => (
-          <button type="button" key={a.key} className={`chip${v.activity === a.key ? ' on' : ''}`} onClick={() => set('activity', a.key)}>{a.label}</button>
-        ))}
-      </div>
-
-      <div className="tiny">Цель</div>
-      <div className="chips">
-        {GOALS.map((g) => (
-          <button type="button" key={g.key} className={`chip${v.goal === g.key ? ' on' : ''}`} onClick={() => set('goal', g.key)}>{g.label}</button>
-        ))}
-      </div>
+      <Select label="Активность" options={ACTIVITIES} value={v.activity} onChange={(a) => set('activity', a)} />
+      <Select label="Цель" options={GOALS} value={v.goal} onChange={(g) => set('goal', g)} />
 
       <div className="resultcard">
         <div>
@@ -77,9 +69,7 @@ export function ProfileForm({
         </div>
       </div>
 
-      <button className="btn" onClick={submit} disabled={saving} style={saving ? { opacity: 0.7 } : undefined}>
-        {saving ? 'Сохраняю…' : submitLabel}
-      </button>
+      <Button onClick={submit} loading={saving} loadingText="Сохраняю…">{submitLabel}</Button>
     </>
   )
 }
