@@ -18,8 +18,21 @@ export const users = pgTable('users', {
   onboarded: boolean('onboarded').notNull().default(false),
   fastingProtocol: text('fasting_protocol').notNull().default('off'),
   eatStartHour: integer('eat_start_hour').notNull().default(12),
+  timezone: text('timezone').notNull().default('Europe/Moscow'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
+
+// Снимок дневной цели (ккал/БЖУ) на конкретную дату — чтобы смена цели в профиле не
+// переписывала задним числом то, что показывается для прошлых дней. PK — пользователь + дата.
+export const dailyTargets = pgTable('daily_targets', {
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
+  date: text('date').notNull(), // локальная дата пользователя (его timezone), YYYY-MM-DD
+  calories: integer('calories').notNull(),
+  protein: integer('protein').notNull(),
+  fat: integer('fat').notNull(),
+  carbs: integer('carbs').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({ pk: primaryKey({ columns: [t.telegramId, t.date] }) }))
 
 // Вода по дням (стаканы). PK — пользователь + дата.
 export const days = pgTable('days', {

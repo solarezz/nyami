@@ -1,11 +1,14 @@
-import { and, eq, gte, lt, asc, desc } from 'drizzle-orm'
+import { and, eq, gte, lt, lte, asc, desc } from 'drizzle-orm'
 import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType, FastingProtocol, Workout } from '@nyami/shared'
 import {
-  type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, hhmm, todayKey, dayRange, topFrequent, mealTypeForHour,
+  type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, topFrequent, mealTypeForHour, resolveEntryInstant,
 } from '../repo.js'
 import { computeNorm } from '../nutrition.js'
+import { localDateKey, localDayRange, localHour, formatHHMM, addDaysToDateStr } from '../tz.js'
 import { db, type Db } from './client.js'
-import { users, meals, days, weights, workouts, mealReminders } from './schema.js'
+import { users, meals, days, weights, workouts, mealReminders, dailyTargets } from './schema.js'
+
+type Target = { calories: number; protein: number; fat: number; carbs: number }
 
 export function createDrizzleRepo(): NyamiRepo {
   const database = db as Db // конструируется только при заданном DATABASE_URL
@@ -20,6 +23,20 @@ export function createDrizzleRepo(): NyamiRepo {
     return after[0]
   }
 
+  // Цель на дату: последний снимок daily_targets с date <= запрошенной; если снимков ещё
+  // нет (пользователь из-до миграции, ни разу не менял профиль) — текущие users.* как фолбэк.
+  async function targetForDate(u: typeof users.$inferSelect, date: string): Promise<Target> {
+    const rows = await database
+      .select().from(dailyTargets)
+      .where(and(eq(dailyTargets.telegramId, u.telegramId), lte(dailyTargets.date, date)))
+      .orderBy(desc(dailyTargets.date))
+      .limit(1)
+    const row = rows[0]
+    return row
+      ? { calories: row.calories, protein: row.protein, fat: row.fat, carbs: row.carbs }
+      : { calories: u.dailyKcal, protein: u.protein, fat: u.fat, carbs: u.carbs }
+  }
+
   return {
     async getProfile(userId) {
       return toProfile(await ensureUser(userId))
@@ -30,14 +47,25 @@ export function createDrizzleRepo(): NyamiRepo {
     },
 
     async updateProfile(userId, req: UpdateProfileRequest) {
-      await ensureUser(userId)
+      const current = await ensureUser(userId)
       const norm = computeNorm(req)
+      const { timezone: reqTz, ...rest } = req
+      const timezone = reqTz ?? current.timezone
       const updated = await database
         .update(users)
-        .set({ ...req, ...norm, onboarded: true })
+        .set({ ...rest, timezone, ...norm, onboarded: true })
         .where(eq(users.telegramId, userId))
         .returning()
       await database.insert(weights).values({ telegramId: userId, weightKg: req.weightKg })
+      // Снимок цели на сегодня (локальная дата) — не трогает цели, показанные для прошлых дней.
+      const today = localDateKey(new Date(), timezone)
+      await database
+        .insert(dailyTargets)
+        .values({ telegramId: userId, date: today, calories: norm.dailyKcal, protein: norm.protein, fat: norm.fat, carbs: norm.carbs })
+        .onConflictDoUpdate({
+          target: [dailyTargets.telegramId, dailyTargets.date],
+          set: { calories: norm.dailyKcal, protein: norm.protein, fat: norm.fat, carbs: norm.carbs },
+        })
       return toProfile(updated[0])
     },
 
@@ -53,41 +81,44 @@ export function createDrizzleRepo(): NyamiRepo {
 
     async getDay(userId, date) {
       const u = await ensureUser(userId)
-      const { start, end } = dayRange(date)
+      const resolvedDate = date ?? localDateKey(new Date(), u.timezone)
+      const { start, end } = localDayRange(resolvedDate, u.timezone)
       const rows = await database
         .select().from(meals)
         .where(and(eq(meals.telegramId, userId), gte(meals.eatenAt, start), lt(meals.eatenAt, end)))
         .orderBy(asc(meals.eatenAt))
 
-      const list: Meal[] = rows.map(toMeal)
+      const list: Meal[] = rows.map((m) => toMeal(m, u.timezone))
       const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
 
       const wkRows = await database
         .select().from(workouts)
         .where(and(eq(workouts.telegramId, userId), gte(workouts.doneAt, start), lt(workouts.doneAt, end)))
         .orderBy(asc(workouts.doneAt))
-      const wkList: Workout[] = wkRows.map(toWorkout)
+      const wkList: Workout[] = wkRows.map((w) => toWorkout(w, u.timezone))
 
-      // Стрик: даты всех приёмов пользователя.
+      // Стрик: локальные даты всех приёмов пользователя.
       const allDates = await database.select({ at: meals.eatenAt }).from(meals).where(eq(meals.telegramId, userId))
-      const dateSet = new Set(allDates.map((r) => r.at.toISOString().slice(0, 10)))
+      const dateSet = new Set(allDates.map((r) => localDateKey(r.at, u.timezone)))
 
       const waterRow = await database
         .select().from(days)
-        .where(and(eq(days.telegramId, userId), eq(days.date, date))).limit(1)
+        .where(and(eq(days.telegramId, userId), eq(days.date, resolvedDate))).limit(1)
+
+      const target = await targetForDate(u, resolvedDate)
 
       const day: DaySummary = {
-        date,
+        date: resolvedDate,
         eatenKcal: sum('kcal'),
-        goalKcal: u.dailyKcal,
+        goalKcal: target.calories,
         burnedKcal: wkList.reduce((s, w) => s + w.kcal, 0),
         macros: {
-          protein: { eaten: sum('protein'), goal: u.protein },
-          fat: { eaten: sum('fat'), goal: u.fat },
-          carbs: { eaten: sum('carbs'), goal: u.carbs },
+          protein: { eaten: sum('protein'), goal: target.protein },
+          fat: { eaten: sum('fat'), goal: target.fat },
+          carbs: { eaten: sum('carbs'), goal: target.carbs },
         },
         water: { done: waterRow[0]?.water ?? 0, goal: WATER_GOAL },
-        streak: computeStreak(dateSet),
+        streak: computeStreak(dateSet, u.timezone),
         meals: list,
         workouts: wkList,
       }
@@ -96,16 +127,16 @@ export function createDrizzleRepo(): NyamiRepo {
 
     async getWeek(userId) {
       const u = await ensureUser(userId)
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 6)
-      weekAgo.setHours(0, 0, 0, 0)
+      const today = localDateKey(new Date(), u.timezone)
+      const weekStartDate = addDaysToDateStr(today, -6)
+      const { start: weekAgo } = localDayRange(weekStartDate, u.timezone)
 
       const rows = await database
         .select().from(meals)
         .where(and(eq(meals.telegramId, userId), gte(meals.eatenAt, weekAgo)))
       const byDay = new Map<string, number>()
       for (const m of rows) {
-        const key = m.eatenAt.toISOString().slice(0, 10)
+        const key = localDateKey(m.eatenAt, u.timezone)
         byDay.set(key, (byDay.get(key) ?? 0) + m.kcal)
       }
 
@@ -114,20 +145,19 @@ export function createDrizzleRepo(): NyamiRepo {
         .where(eq(weights.telegramId, userId)).orderBy(asc(weights.at))
       const weightSeries = wRows.length ? wRows.slice(-7).map((r) => r.w) : [u.weightKg]
 
-      return { days: lastSevenDays(byDay, u.dailyKcal), weightSeries }
+      return { days: lastSevenDays(byDay, u.dailyKcal, u.timezone), weightSeries }
     },
 
     async addMeal(userId, req: AddMealRequest, date) {
-      await ensureUser(userId)
-      const now = new Date()
-      // Прошлый день → выбранная дата + текущее время суток.
-      const eatenAt = date === todayKey() ? now : new Date(`${date}T${now.toISOString().slice(11)}`)
+      const u = await ensureUser(userId)
+      const resolvedDate = date ?? localDateKey(new Date(), u.timezone)
+      const eatenAt = resolveEntryInstant(resolvedDate, u.timezone)
       const inserted = await database
         .insert(meals)
-        // Тип из запроса приоритетнее; если не задан — определяем по времени.
-        .values({ telegramId: userId, eatenAt, ...req, mealType: req.mealType ?? mealTypeForHour(eatenAt.getUTCHours()) })
+        // Тип из запроса приоритетнее; если не задан — определяем по локальному часу.
+        .values({ telegramId: userId, eatenAt, ...req, mealType: req.mealType ?? mealTypeForHour(localHour(eatenAt, u.timezone)) })
         .returning()
-      return toMeal(inserted[0])
+      return toMeal(inserted[0], u.timezone)
     },
 
     async deleteMeal(userId, mealId) {
@@ -135,19 +165,16 @@ export function createDrizzleRepo(): NyamiRepo {
     },
 
     async addWorkout(userId, req, date) {
-      await ensureUser(userId)
-      // req.time — явно выбранное юзером время (HH:mm); иначе берём текущее.
+      const u = await ensureUser(userId)
+      const resolvedDate = date ?? localDateKey(new Date(), u.timezone)
+      // req.time — явно выбранное юзером локальное время (HH:mm); иначе берём текущее.
       const { time: reqTime, ...rest } = req
-      const now = new Date()
-      // reqTime — MSK-время с пикера; переводим в UTC явным смещением +03:00.
-      const doneAt = reqTime && /^\d{2}:\d{2}$/.test(reqTime)
-        ? new Date(`${date}T${reqTime}:00+03:00`)
-        : date === todayKey() ? now : new Date(`${date}T${now.toISOString().slice(11)}`)
+      const doneAt = resolveEntryInstant(resolvedDate, u.timezone, reqTime)
       const inserted = await database
         .insert(workouts)
         .values({ telegramId: userId, doneAt, ...rest })
         .returning()
-      return toWorkout(inserted[0])
+      return toWorkout(inserted[0], u.timezone)
     },
 
     async deleteWorkout(userId, workoutId) {
@@ -155,10 +182,11 @@ export function createDrizzleRepo(): NyamiRepo {
     },
 
     async setWater(userId, glasses, date) {
-      await ensureUser(userId)
+      const u = await ensureUser(userId)
+      const resolvedDate = date ?? localDateKey(new Date(), u.timezone)
       const clamped = Math.max(0, Math.min(20, Math.round(glasses)))
       await database
-        .insert(days).values({ telegramId: userId, date, water: clamped })
+        .insert(days).values({ telegramId: userId, date: resolvedDate, water: clamped })
         .onConflictDoUpdate({ target: [days.telegramId, days.date], set: { water: clamped } })
       return clamped
     },
@@ -206,17 +234,17 @@ export function createDrizzleRepo(): NyamiRepo {
   }
 }
 
-function toMeal(m: typeof meals.$inferSelect): Meal {
+function toMeal(m: typeof meals.$inferSelect, timeZone: string): Meal {
   return {
-    id: m.id, name: m.name, emoji: m.emoji, time: hhmm(m.eatenAt),
+    id: m.id, name: m.name, emoji: m.emoji, time: formatHHMM(m.eatenAt, timeZone),
     mealType: m.mealType as MealType,
     kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
   }
 }
 
-function toWorkout(w: typeof workouts.$inferSelect): Workout {
+function toWorkout(w: typeof workouts.$inferSelect, timeZone: string): Workout {
   return {
-    id: w.id, name: w.name, emoji: w.emoji, minutes: w.minutes, kcal: w.kcal, time: hhmm(w.doneAt),
+    id: w.id, name: w.name, emoji: w.emoji, minutes: w.minutes, kcal: w.kcal, time: formatHHMM(w.doneAt, timeZone),
   }
 }
 
@@ -234,5 +262,6 @@ function toProfile(u: typeof users.$inferSelect): Profile {
     carbs: u.carbs,
     fastingProtocol: u.fastingProtocol as FastingProtocol,
     eatStartHour: u.eatStartHour,
+    timezone: u.timezone,
   }
 }

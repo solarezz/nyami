@@ -15,7 +15,10 @@ export function Onboarding({ onNavigate }: { onNavigate: (s: Screen) => void }) 
     : DEFAULTS
 
   const submit = async (v: UpdateProfileRequest) => {
-    await updateProfile(v)
+    // Таймзона определяется автоматически из браузера/Telegram WebView; переопределяется
+    // сама, если пользователь позже откроет приложение из другого пояса.
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    await updateProfile({ ...v, timezone })
     onNavigate('today')
   }
 

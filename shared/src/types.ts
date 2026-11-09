@@ -57,6 +57,7 @@ export interface Profile {
   carbs: number
   fastingProtocol: FastingProtocol
   eatStartHour: number // час начала окна еды (0–23)
+  timezone: string // IANA, напр. "Europe/Moscow" — определяется на фронте, можно сменить в профиле
 }
 
 export interface UpdateFastingRequest {
@@ -115,6 +116,7 @@ export interface UpdateProfileRequest {
   weightKg: number
   activity: 'low' | 'medium' | 'high'
   goal: 'lose' | 'maintain' | 'gain'
+  timezone?: string // IANA; если не передан — сервер оставляет текущее значение
 }
 
 export interface AddMealRequest {

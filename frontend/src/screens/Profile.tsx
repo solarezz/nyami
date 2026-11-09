@@ -19,7 +19,8 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }
 
   const submit = async (v: UpdateProfileRequest) => {
-    await updateProfile(v)
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    await updateProfile({ ...v, timezone })
     onNavigate('today')
   }
 

@@ -43,6 +43,13 @@
       "when": 1786713464210,
       "tag": "0005_special_gwen_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794244909248,
+      "tag": "0006_certain_hercules",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,12 @@
 import cron from 'node-cron'
 import type { MealType } from '@nyami/shared'
 import { config } from './config.js'
-import { type NyamiRepo, todayKey } from './repo.js'
+import { type NyamiRepo, DEFAULT_TIMEZONE } from './repo.js'
+import { localDateKey, localMinutesOfDay } from './tz.js'
 
-const TZ = 'Europe/Moscow'
+// Планировщик сам по себе тикает по MSK (большинство пользователей — RU); порог для
+// конкретного пользователя считается в ЕГО таймзоне (см. mealThreshold/checkMealReminders).
+const TZ = DEFAULT_TIMEZONE
 
 async function tg(method: string, body: Record<string, unknown>): Promise<void> {
   if (!config.botToken) return
@@ -51,28 +54,22 @@ const MIN_SAMPLES = 3 // сколько записей нужно, чтобы д
 const GRACE_MIN = 45 // буфер после порога, прежде чем напоминать
 const RECENT_LIMIT = 10 // сколько последних записей типа берём для среднего
 
-function moscowMinutesOfDay(d: Date): number {
-  // Россия — фиксированный UTC+3 без перехода на летнее время.
-  return (d.getUTCHours() * 60 + d.getUTCMinutes() + 180) % 1440
-}
-
-function moscowMinutesNow(): number {
-  return moscowMinutesOfDay(new Date())
-}
-
-/** Порог (мин. от полуночи MSK) — когда пора напомнить про этот тип; null — рано/не нужно. */
-async function mealThreshold(repo: NyamiRepo, userId: number, type: MealType): Promise<number | null> {
+/** Порог (мин. от полуночи ЛОКАЛЬНОГО времени пользователя) — когда пора напомнить про этот тип; null — рано/не нужно. */
+async function mealThreshold(repo: NyamiRepo, userId: number, type: MealType, timeZone: string): Promise<number | null> {
   const recent = await repo.recentMealTimes(userId, type, RECENT_LIMIT)
   if (recent.length >= MIN_SAMPLES) {
-    const avg = recent.reduce((s, d) => s + moscowMinutesOfDay(d), 0) / recent.length
+    const avg = recent.reduce((s, d) => s + localMinutesOfDay(d, timeZone), 0) / recent.length
     return Math.round(avg)
   }
   return MEAL_DEFAULT_MIN[type]
 }
 
 /** Проверяет одного пользователя; при необходимости шлёт одно напоминание. Возвращает тип отправленного или null. */
-export async function checkMealReminders(repo: NyamiRepo, userId: number, nowMin = moscowMinutesNow()): Promise<MealType | null> {
-  const date = todayKey()
+export async function checkMealReminders(repo: NyamiRepo, userId: number): Promise<MealType | null> {
+  const profile = await repo.getProfile(userId)
+  const timeZone = profile.timezone
+  const nowMin = localMinutesOfDay(new Date(), timeZone)
+  const date = localDateKey(new Date(), timeZone)
   const day = await repo.getDay(userId, date)
   const logged = new Set(day.meals.map((m) => m.mealType))
 
@@ -82,7 +79,7 @@ export async function checkMealReminders(repo: NyamiRepo, userId: number, nowMin
     // Перекус — необязательный приём: не предлагаем, если бюджет калорий уже исчерпан.
     if (type === 'snack' && day.goalKcal + day.burnedKcal - day.eatenKcal <= 0) continue
 
-    const threshold = await mealThreshold(repo, userId, type)
+    const threshold = await mealThreshold(repo, userId, type, timeZone)
     if (threshold == null) continue
     if (nowMin < threshold + GRACE_MIN) continue
 
@@ -100,16 +97,15 @@ export async function checkMealReminders(repo: NyamiRepo, userId: number, nowMin
 }
 
 async function runMealReminders(repo: NyamiRepo): Promise<void> {
-  const nowMin = moscowMinutesNow()
   for (const id of await repo.getOnboardedUserIds()) {
-    await checkMealReminders(repo, id, nowMin)
+    await checkMealReminders(repo, id)
     await new Promise((r) => setTimeout(r, 60)) // мягкий троттлинг под лимиты Telegram
   }
 }
 
 /** Недельный отчёт по данным пользователя. */
 export async function runWeeklyFor(repo: NyamiRepo, userId: number): Promise<void> {
-  const [week, day] = await Promise.all([repo.getWeek(userId), repo.getDay(userId, todayKey())])
+  const [week, day] = await Promise.all([repo.getWeek(userId), repo.getDay(userId)])
   const logged = week.days.filter((d) => d.kcal > 0)
   if (logged.length === 0) return // нечего показывать
 

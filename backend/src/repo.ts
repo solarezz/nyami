@@ -3,15 +3,30 @@ import type {
   Workout, AddWorkoutRequest,
 } from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
+import { localDateKey, addDaysToDateStr, localHour, formatHHMM, zonedTimeToUtc, DEFAULT_TIMEZONE } from './tz.js'
 
 export const WATER_GOAL = 8
+export { DEFAULT_TIMEZONE }
 
-/** Тип приёма пищи по часу дня. */
+/** Тип приёма пищи по часу дня (локальному часу пользователя). */
 export function mealTypeForHour(h: number): MealType {
   if (h >= 4 && h < 11) return 'breakfast'
   if (h >= 11 && h < 16) return 'lunch'
   if (h >= 16 && h < 22) return 'dinner'
   return 'snack'
+}
+
+/**
+ * UTC-инстант для записи приёма/тренировки: явное время (HH:mm, с пикера) —
+ * всегда в локальном времени пользователя; без явного времени и для сегодняшней
+ * локальной даты — «сейчас»; без явного времени для прошлой даты — текущее
+ * локальное время суток, применённое к выбранной дате (чтобы не писать 00:00).
+ */
+export function resolveEntryInstant(date: string, timeZone: string, explicitHHMM?: string): Date {
+  if (explicitHHMM && /^\d{2}:\d{2}$/.test(explicitHHMM)) return zonedTimeToUtc(date, explicitHHMM, timeZone)
+  const now = new Date()
+  if (date === localDateKey(now, timeZone)) return now
+  return zonedTimeToUtc(date, formatHHMM(now, timeZone), timeZone)
 }
 
 // Абстракция хранилища. Мок (in-memory) и Postgres (Drizzle) реализуют один интерфейс.
@@ -20,18 +35,18 @@ export interface NyamiRepo {
   isOnboarded(userId: number): Promise<boolean>
   updateProfile(userId: number, req: UpdateProfileRequest): Promise<Profile>
   setFasting(userId: number, req: UpdateFastingRequest): Promise<Profile>
-  /** Сводка за конкретный день (date = YYYY-MM-DD). */
-  getDay(userId: number, date: string): Promise<DaySummary>
+  /** Сводка за конкретный день (date = YYYY-MM-DD, локальная дата пользователя). Без даты — сегодня. */
+  getDay(userId: number, date?: string): Promise<DaySummary>
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
-  addMeal(userId: number, meal: AddMealRequest, date: string): Promise<Meal>
+  addMeal(userId: number, meal: AddMealRequest, date?: string): Promise<Meal>
   deleteMeal(userId: number, mealId: string): Promise<void>
-  addWorkout(userId: number, workout: AddWorkoutRequest, date: string): Promise<Workout>
+  addWorkout(userId: number, workout: AddWorkoutRequest, date?: string): Promise<Workout>
   deleteWorkout(userId: number, workoutId: string): Promise<void>
   /** Последние по времени приёмы данного типа (для расчёта личного среднего времени). */
   recentMealTimes(userId: number, mealType: MealType, limit: number): Promise<Date[]>
   /** Атомарно «застолбить» отправку напоминания на день+тип. false — уже отправляли. */
   claimReminder(userId: number, date: string, mealType: MealType): Promise<boolean>
-  setWater(userId: number, glasses: number, date: string): Promise<number>
+  setWater(userId: number, glasses: number, date?: string): Promise<number>
   /** Записать замер веса; возвращает последние 7 замеров (weightSeries). */
   setWeight(userId: number, weightKg: number): Promise<number[]>
   getFrequent(userId: number): Promise<FrequentMeal[]>
@@ -52,27 +67,15 @@ export function topFrequent(all: { name: string; emoji: string; kcal: number; pr
 
 const WEEKDAY_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-export function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-/** Границы суток по дате YYYY-MM-DD (UTC — как и ключи дней). */
-export function dayRange(date: string): { start: Date; end: Date } {
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start.getTime() + 24 * 3600 * 1000)
-  return { start, end }
-}
-
-/** Стрик: сколько дней подряд (включая сегодня) есть хотя бы один приём пищи. */
-export function computeStreak(dates: Set<string>): number {
+/** Стрик: сколько дней подряд (включая сегодня, локальная дата пользователя) есть хотя бы один приём пищи. */
+export function computeStreak(dates: Set<string>, timeZone: string): number {
   let streak = 0
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
+  let d = localDateKey(new Date(), timeZone)
   // Если сегодня ещё пусто — стрик считаем от вчера.
-  if (!dates.has(d.toISOString().slice(0, 10))) d.setDate(d.getDate() - 1)
-  while (dates.has(d.toISOString().slice(0, 10))) {
+  if (!dates.has(d)) d = addDaysToDateStr(d, -1)
+  while (dates.has(d)) {
     streak++
-    d.setDate(d.getDate() - 1)
+    d = addDaysToDateStr(d, -1)
   }
   return streak
 }
@@ -82,6 +85,7 @@ const defaultProfile: Profile = {
   activity: 'medium', goal: 'lose',
   dailyKcal: 1900, protein: 140, fat: 60, carbs: 190,
   fastingProtocol: 'off', eatStartHour: 12,
+  timezone: DEFAULT_TIMEZONE,
 }
 
 type StoredMeal = Meal & { eatenAt: string }
@@ -95,6 +99,8 @@ export function createMockRepo(): NyamiRepo {
   const profiles = new Map<number, Profile>()
   const onboardedSet = new Set<number>()
   const remindersSent = new Map<number, Set<string>>() // userId -> {`date:mealType`}
+  // userId -> date -> снимок цели на эту дату (версионирование, как и в Postgres-репо).
+  const dailyTargets = new Map<number, Map<string, { calories: number; protein: number; fat: number; carbs: number }>>()
 
   const getMeals = (u: number) => {
     if (!meals.has(u)) meals.set(u, [])
@@ -105,6 +111,19 @@ export function createMockRepo(): NyamiRepo {
     return workouts.get(u)!
   }
   const getProfileFor = (u: number) => profiles.get(u) ?? defaultProfile
+
+  // Цель на дату: последний снимок с date <= запрошенной, иначе — текущий профиль (фолбэк).
+  const getTargetFor = (u: number, date: string) => {
+    const p = getProfileFor(u)
+    const byDate = dailyTargets.get(u)
+    if (!byDate) return { calories: p.dailyKcal, protein: p.protein, fat: p.fat, carbs: p.carbs }
+    let best: { calories: number; protein: number; fat: number; carbs: number } | null = null
+    let bestDate = ''
+    for (const [d, t] of byDate) {
+      if (d <= date && d > bestDate) { best = t; bestDate = d }
+    }
+    return best ?? { calories: p.dailyKcal, protein: p.protein, fat: p.fat, carbs: p.carbs }
+  }
 
   return {
     async getProfile(u) {
@@ -117,12 +136,15 @@ export function createMockRepo(): NyamiRepo {
 
     async updateProfile(u, req) {
       const norm = computeNorm(req)
-      const p: Profile = { ...getProfileFor(u), ...req, ...norm }
+      const prev = getProfileFor(u)
+      const p: Profile = { ...prev, ...req, ...norm, timezone: req.timezone ?? prev.timezone }
       profiles.set(u, p)
       onboardedSet.add(u)
       const w = weights.get(u) ?? []
       w.push(req.weightKg)
       weights.set(u, w)
+      if (!dailyTargets.has(u)) dailyTargets.set(u, new Map())
+      dailyTargets.get(u)!.set(localDateKey(new Date(), p.timezone), { calories: norm.dailyKcal, protein: norm.protein, fat: norm.fat, carbs: norm.carbs })
       return p
     },
 
@@ -133,24 +155,27 @@ export function createMockRepo(): NyamiRepo {
     },
 
     async getDay(u, date) {
-      const all = getMeals(u)
-      const list = all.filter((m) => m.eatenAt.slice(0, 10) === date)
-      const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
       const p = getProfileFor(u)
-      const dates = new Set(all.map((m) => m.eatenAt.slice(0, 10)))
-      const wkList = getWorkouts(u).filter((w) => w.doneAt.slice(0, 10) === date)
+      const resolvedDate = date ?? localDateKey(new Date(), p.timezone)
+      const all = getMeals(u)
+      const localKey = (iso: string) => localDateKey(new Date(iso), p.timezone)
+      const list = all.filter((m) => localKey(m.eatenAt) === resolvedDate)
+      const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
+      const dates = new Set(all.map((m) => localKey(m.eatenAt)))
+      const wkList = getWorkouts(u).filter((w) => localKey(w.doneAt) === resolvedDate)
+      const target = getTargetFor(u, resolvedDate)
       return {
-        date,
+        date: resolvedDate,
         eatenKcal: sum('kcal'),
-        goalKcal: p.dailyKcal,
+        goalKcal: target.calories,
         burnedKcal: wkList.reduce((s, w) => s + w.kcal, 0),
         macros: {
-          protein: { eaten: sum('protein'), goal: p.protein },
-          fat: { eaten: sum('fat'), goal: p.fat },
-          carbs: { eaten: sum('carbs'), goal: p.carbs },
+          protein: { eaten: sum('protein'), goal: target.protein },
+          fat: { eaten: sum('fat'), goal: target.fat },
+          carbs: { eaten: sum('carbs'), goal: target.carbs },
         },
-        water: { done: water.get(u)?.get(date) ?? 0, goal: WATER_GOAL },
-        streak: computeStreak(dates),
+        water: { done: water.get(u)?.get(resolvedDate) ?? 0, goal: WATER_GOAL },
+        streak: computeStreak(dates, p.timezone),
         meals: list.map(stripInternal),
         workouts: wkList.map(stripWorkout),
       }
@@ -159,24 +184,27 @@ export function createMockRepo(): NyamiRepo {
     async getWeek(u) {
       const p = getProfileFor(u)
       const byDay = new Map<string, number>()
-      for (const m of getMeals(u)) byDay.set(m.eatenAt!.slice(0, 10), (byDay.get(m.eatenAt!.slice(0, 10)) ?? 0) + m.kcal)
-      const days = lastSevenDays(byDay, p.dailyKcal)
+      for (const m of getMeals(u)) {
+        const key = localDateKey(new Date(m.eatenAt), p.timezone)
+        byDay.set(key, (byDay.get(key) ?? 0) + m.kcal)
+      }
+      const days = lastSevenDays(byDay, p.dailyKcal, p.timezone)
       const w = weights.get(u) ?? []
       return { days, weightSeries: w.length ? w.slice(-7) : [p.weightKg] }
     },
 
     async addMeal(u, req, date) {
-      const now = new Date()
-      // Для прошлого дня берём выбранную дату + текущее время суток.
-      const eatenAt = date === todayKey() ? now.toISOString() : `${date}T${now.toISOString().slice(11)}`
-      const when = new Date(eatenAt)
+      const p = getProfileFor(u)
+      const resolvedDate = date ?? localDateKey(new Date(), p.timezone)
+      const when = resolveEntryInstant(resolvedDate, p.timezone)
+      const eatenAt = when.toISOString()
       const meal: StoredMeal = {
         id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
-        time: hhmm(when),
+        time: formatHHMM(when, p.timezone),
         eatenAt,
         ...req,
-        // Тип из запроса приоритетнее; если не задан — определяем по времени.
-        mealType: req.mealType ?? mealTypeForHour(when.getHours()),
+        // Тип из запроса приоритетнее; если не задан — определяем по локальному часу.
+        mealType: req.mealType ?? mealTypeForHour(localHour(when, p.timezone)),
       }
       getMeals(u).push(meal)
       return stripInternal(meal)
@@ -187,16 +215,15 @@ export function createMockRepo(): NyamiRepo {
     },
 
     async addWorkout(u, req, date) {
-      // req.time — явно выбранное юзером время (HH:mm); иначе берём текущее.
+      const p = getProfileFor(u)
+      const resolvedDate = date ?? localDateKey(new Date(), p.timezone)
+      // req.time — явно выбранное юзером локальное время (HH:mm); иначе берём текущее.
       const { time: reqTime, ...rest } = req
-      const now = new Date()
-      // reqTime — MSK-время с пикера; переводим в UTC явным смещением +03:00.
-      const doneAt = reqTime && /^\d{2}:\d{2}$/.test(reqTime)
-        ? `${date}T${reqTime}:00+03:00`
-        : date === todayKey() ? now.toISOString() : `${date}T${now.toISOString().slice(11)}`
+      const when = resolveEntryInstant(resolvedDate, p.timezone, reqTime)
+      const doneAt = when.toISOString()
       const w: StoredWorkout = {
         id: `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
-        time: hhmm(new Date(doneAt)),
+        time: formatHHMM(when, p.timezone),
         doneAt,
         ...rest,
       }
@@ -209,9 +236,11 @@ export function createMockRepo(): NyamiRepo {
     },
 
     async setWater(u, glasses, date) {
+      const p = getProfileFor(u)
+      const resolvedDate = date ?? localDateKey(new Date(), p.timezone)
       const clamped = Math.max(0, Math.min(20, Math.round(glasses)))
       if (!water.has(u)) water.set(u, new Map())
-      water.get(u)!.set(date, clamped)
+      water.get(u)!.set(resolvedDate, clamped)
       return clamped
     },
 
@@ -262,22 +291,16 @@ function stripWorkout(w: StoredWorkout): Workout {
   return rest
 }
 
-export function lastSevenDays(byDay: Map<string, number>, norm: number): WeekDay[] {
+/** Калории по дням за последние 7 локальных суток пользователя (timeZone). */
+export function lastSevenDays(byDay: Map<string, number>, norm: number, timeZone: string): WeekDay[] {
   const days: WeekDay[] = []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = localDateKey(new Date(), timeZone)
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(today.getDate() - i)
-    const key = d.toISOString().slice(0, 10)
+    const key = addDaysToDateStr(today, -i)
     const kcal = byDay.get(key) ?? 0
-    days.push({ label: WEEKDAY_RU[d.getDay()], kcal, over: kcal > norm, today: i === 0 })
+    // День недели — свойство самой календарной даты, не зависит от часового пояса отображения.
+    const weekday = new Date(`${key}T00:00:00.000Z`).getUTCDay()
+    days.push({ label: WEEKDAY_RU[weekday], kcal, over: kcal > norm, today: i === 0 })
   }
   return days
-}
-
-export function hhmm(date: Date): string {
-  // Явно MSK — иначе формат зависит от таймзоны ОС сервера (в проде это обычно UTC),
-  // и «время» приёма/тренировки съезжает на несколько часов от реального московского.
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })
 }

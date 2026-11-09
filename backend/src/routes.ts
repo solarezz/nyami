@@ -4,13 +4,14 @@ import type {
   AddWorkoutRequest, RecognizeWorkoutRequest, SetWeightRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
-import { type NyamiRepo, todayKey } from './repo.js'
+import { type NyamiRepo } from './repo.js'
 import { getAi } from './ai/index.js'
 import { offByBarcode } from './ai/off.js'
 import { fatsecretByBarcode } from './ai/fatsecret.js'
 
-// Валидная дата YYYY-MM-DD или сегодня.
-const dayParam = (d: unknown): string => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayKey())
+// Явная дата YYYY-MM-DD из запроса, иначе undefined — репозиторий сам подставит
+// «сегодня» по локальной таймзоне пользователя (она есть только после ensureUser).
+const dayParam = (d: unknown): string | undefined => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined)
 
 export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
   const ai = getAi()
@@ -104,7 +105,7 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     // Коуч: отвечает с учётом контекста дня пользователя.
     api.post<{ Body: CoachRequest }>('/api/coach', async (req): Promise<CoachResponse> => {
-      const day = await repo.getDay(req.user.id, todayKey()) // коуч всегда про сегодня
+      const day = await repo.getDay(req.user.id) // коуч всегда про сегодня (локальная дата пользователя)
       const reply = await ai.coach(day, req.body.message)
       return { reply }
     })
