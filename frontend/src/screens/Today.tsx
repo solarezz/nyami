@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Wordmark } from '../components/Wordmark'
 import { Icon } from '../components/Icons'
+import { NumberField } from '../components/NumberField'
 import { RingStat } from '../components/Ring'
 import { FastingCard } from '../components/FastingCard'
 import { BottomNav } from '../components/BottomNav'
@@ -23,15 +25,17 @@ const MEAL_GROUPS: { type: MealType; label: string }[] = [
   { type: 'snack', label: 'Перекус' },
 ]
 
+// Локальные (НЕ UTC) календарные дни устройства — должны совпадать с todayStr()/бэкендом.
 function weekDates() {
   const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
   const out: { dn: string; num: number; date: string; today: boolean }[] = []
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i))
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
     out.push({
-      dn: i === 0 ? 'Сег' : WD[d.getUTCDay()],
-      num: d.getUTCDate(),
-      date: d.toISOString().slice(0, 10),
+      dn: i === 0 ? 'Сег' : WD[d.getDay()],
+      num: d.getDate(),
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
       today: i === 0,
     })
   }
@@ -45,7 +49,7 @@ function dateLabel(iso: string): string {
 }
 
 export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { day, week, me, deleteMeal, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate, setSelectedMealType } = useData()
+  const { day, week, me, deleteMeal, updateMealItem, deleteMealItem, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate, setSelectedMealType } = useData()
   if (!day) return null
   const d = day
   // Сожжённые на тренировках калории увеличивают дневной остаток.
@@ -73,6 +77,23 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     haptic('light')
     setSelectedMealType(type)
     onNavigate('add')
+  }
+
+  const onChangeItemGrams = async (mealId: string, itemId: string, grams: number) => {
+    try {
+      await updateMealItem(mealId, itemId, grams)
+    } catch {
+      showAlert('Не удалось изменить массу. Попробуй ещё раз.')
+    }
+  }
+
+  const onDeleteItem = async (mealId: string, itemId: string) => {
+    haptic('medium')
+    try {
+      await deleteMealItem(mealId, itemId)
+    } catch {
+      showAlert('Это последний компонент приёма — удали весь приём целиком.')
+    }
   }
 
   const onDeleteWorkout = async (w: Workout) => {
@@ -210,7 +231,11 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                 </button>
               </div>
               {items.map((meal, i) => (
-                <MealCard key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)} />
+                <MealCard
+                  key={meal.id} meal={meal} bg={thumbBg[i % thumbBg.length]} onDelete={() => onDelete(meal)}
+                  onChangeItemGrams={(itemId, grams) => onChangeItemGrams(meal.id, itemId, grams)}
+                  onDeleteItem={(itemId) => onDeleteItem(meal.id, itemId)}
+                />
               ))}
             </div>
           )
@@ -255,23 +280,54 @@ function WorkoutCard({ workout, onDelete }: { workout: Workout; onDelete: () => 
   )
 }
 
-function MealCard({ meal, bg, onDelete }: { meal: Meal; bg: string; onDelete: () => void }) {
+function MealCard({
+  meal, bg, onDelete, onChangeItemGrams, onDeleteItem,
+}: {
+  meal: Meal
+  bg: string
+  onDelete: () => void
+  onChangeItemGrams: (itemId: string, grams: number) => void
+  onDeleteItem: (itemId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const multi = meal.items.length > 1
+
   return (
-    <div className="meal">
-      <div className="thumb" style={{ background: bg }}>{meal.emoji}</div>
-      <div className="mm">
-        <div className="nm">{meal.name}</div>
-        <div className="chips">
-          <span><i style={{ background: 'var(--prot)' }} />{meal.protein} Б</span>
-          <span><i style={{ background: 'var(--carb)' }} />{meal.carbs} У</span>
-          <span><i style={{ background: 'var(--fat)' }} />{meal.fat} Ж</span>
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="meal" style={{ cursor: multi ? 'pointer' : undefined }} onClick={multi ? () => setOpen((v) => !v) : undefined}>
+        <div className="thumb" style={{ background: bg }}>{meal.emoji}</div>
+        <div className="mm">
+          <div className="nm">{meal.name}{multi && <span className="muted" style={{ fontWeight: 700, marginLeft: 6 }}>· {meal.items.length} компонента {open ? '▴' : '▾'}</span>}</div>
+          <div className="chips">
+            <span><i style={{ background: 'var(--prot)' }} />{meal.protein} Б</span>
+            <span><i style={{ background: 'var(--carb)' }} />{meal.carbs} У</span>
+            <span><i style={{ background: 'var(--fat)' }} />{meal.fat} Ж</span>
+          </div>
         </div>
+        <div className="rt">
+          <div className="kc">{meal.kcal}<small> ккал</small></div>
+          <div className="tm">{meal.time}</div>
+        </div>
+        <button className="del" onClick={(e) => { e.stopPropagation(); onDelete() }} aria-label="Удалить"><Icon name="trash" /></button>
       </div>
-      <div className="rt">
-        <div className="kc">{meal.kcal}<small> ккал</small></div>
-        <div className="tm">{meal.time}</div>
-      </div>
-      <button className="del" onClick={onDelete} aria-label="Удалить"><Icon name="trash" /></button>
+
+      {open && (
+        <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {meal.items.map((it) => (
+            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+              <span style={{ fontSize: 18 }}>{it.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{it.name}</div>
+                <span className="muted" style={{ fontSize: 12 }}>{it.kcal} ккал</span>
+              </div>
+              <div style={{ width: 150 }}>
+                <NumberField label="" value={it.grams} min={1} max={2000} step={10} onChange={(g) => onChangeItemGrams(it.id, g)} />
+              </div>
+              <button className="del" onClick={() => onDeleteItem(it.id)} aria-label="Удалить компонент"><Icon name="trash" /></button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

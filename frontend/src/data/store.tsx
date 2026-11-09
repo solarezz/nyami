@@ -33,6 +33,8 @@ interface DataState {
   setSelectedMealType: (t: MealType | null) => void
   addMeal: (meal: AddMealRequest) => Promise<void>
   deleteMeal: (id: string) => Promise<void>
+  updateMealItem: (mealId: string, itemId: string, grams: number) => Promise<void>
+  deleteMealItem: (mealId: string, itemId: string) => Promise<void>
   recognizeWorkout: (text: string) => Promise<WorkoutRecognition>
   addWorkout: (workout: AddWorkoutRequest) => Promise<void>
   deleteWorkout: (id: string) => Promise<void>
@@ -131,6 +133,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await reloadDayAndWeek()
   }, [reloadDayAndWeek])
 
+  const updateMealItem = useCallback(async (mealId: string, itemId: string, grams: number) => {
+    await api.updateMealItem(mealId, itemId, grams)
+    await reloadDayAndWeek()
+  }, [reloadDayAndWeek])
+
+  const deleteMealItem = useCallback(async (mealId: string, itemId: string) => {
+    await api.deleteMealItem(mealId, itemId)
+    await reloadDayAndWeek()
+  }, [reloadDayAndWeek])
+
   const recognizeWorkout = useCallback(async (text: string) => api.recognizeWorkout(text), [])
 
   const addWorkout = useCallback(async (workout: AddWorkoutRequest) => {
@@ -178,7 +190,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       selectedDate, isToday: selectedDate === todayStr(), setSelectedDate, retry,
       selectedMealType, setSelectedMealType,
       pending, setPending,
-      refresh, recognize, recognizeBarcode, addMeal, deleteMeal,
+      refresh, recognize, recognizeBarcode, addMeal, deleteMeal, updateMealItem, deleteMealItem,
       recognizeWorkout, addWorkout, deleteWorkout,
       setWater, setWeight, updateProfile, setFasting, askCoach,
     }}>

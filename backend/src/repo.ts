@@ -1,5 +1,5 @@
 import type {
-  DaySummary, Profile, WeekDay, Meal, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType, UpdateFastingRequest,
+  DaySummary, Profile, WeekDay, Meal, MealItem, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType, UpdateFastingRequest,
   Workout, AddWorkoutRequest,
 } from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
@@ -29,6 +29,35 @@ export function resolveEntryInstant(date: string, timeZone: string, explicitHHMM
   return zonedTimeToUtc(date, formatHHMM(now, timeZone), timeZone)
 }
 
+type ItemNutrients = { kcal: number; protein: number; carbs: number; fat: number }
+
+/** Сумма КБЖУ по компонентам приёма — единственный источник истины для агрегата meal.*. */
+export function aggregateItems(items: ItemNutrients[]): ItemNutrients {
+  return items.reduce(
+    (s, i) => ({ kcal: s.kcal + i.kcal, protein: s.protein + i.protein, carbs: s.carbs + i.carbs, fat: s.fat + i.fat }),
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  )
+}
+
+/** Пропорциональный пересчёт КБЖУ компонента при изменении массы (по плотности текущего значения). */
+export function rescaleItem<T extends { grams: number } & ItemNutrients>(item: T, newGrams: number): T {
+  const grams = Math.max(1, Math.round(newGrams * 10) / 10)
+  const scale = item.grams > 0 ? grams / item.grams : 1
+  return {
+    ...item,
+    grams,
+    kcal: Math.max(0, Math.round(item.kcal * scale)),
+    protein: Math.max(0, Math.round(item.protein * scale)),
+    carbs: Math.max(0, Math.round(item.carbs * scale)),
+    fat: Math.max(0, Math.round(item.fat * scale)),
+  }
+}
+
+/** Бросается при попытке удалить последний (единственный) компонент приёма. */
+export class LastItemError extends Error {
+  constructor() { super('last_item') }
+}
+
 // Абстракция хранилища. Мок (in-memory) и Postgres (Drizzle) реализуют один интерфейс.
 export interface NyamiRepo {
   getProfile(userId: number): Promise<Profile>
@@ -40,6 +69,10 @@ export interface NyamiRepo {
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
   addMeal(userId: number, meal: AddMealRequest, date?: string): Promise<Meal>
   deleteMeal(userId: number, mealId: string): Promise<void>
+  /** Изменить массу одного компонента приёма (остальные КБЖУ компонента — пропорционально). Бросает LastItemError, если это удаление последнего. */
+  updateMealItem(userId: number, mealId: string, itemId: string, grams: number): Promise<Meal>
+  /** Удалить один компонент приёма. Бросает LastItemError для единственного компонента — удаляйте весь приём через deleteMeal. */
+  deleteMealItem(userId: number, mealId: string, itemId: string): Promise<Meal>
   addWorkout(userId: number, workout: AddWorkoutRequest, date?: string): Promise<Workout>
   deleteWorkout(userId: number, workoutId: string): Promise<void>
   /** Последние по времени приёмы данного типа (для расчёта личного среднего времени). */
@@ -198,11 +231,16 @@ export function createMockRepo(): NyamiRepo {
       const resolvedDate = date ?? localDateKey(new Date(), p.timezone)
       const when = resolveEntryInstant(resolvedDate, p.timezone)
       const eatenAt = when.toISOString()
+      const items: MealItem[] = req.items.map((it, i) => ({ id: `mi${Date.now()}${i}${Math.random().toString(36).slice(2, 6)}`, ...it }))
+      const agg = aggregateItems(items)
       const meal: StoredMeal = {
         id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
         time: formatHHMM(when, p.timezone),
         eatenAt,
-        ...req,
+        name: req.name,
+        emoji: req.emoji,
+        items,
+        ...agg,
         // Тип из запроса приоритетнее; если не задан — определяем по локальному часу.
         mealType: req.mealType ?? mealTypeForHour(localHour(when, p.timezone)),
       }
@@ -212,6 +250,27 @@ export function createMockRepo(): NyamiRepo {
 
     async deleteMeal(u, mealId) {
       meals.set(u, getMeals(u).filter((m) => m.id !== mealId))
+    },
+
+    async updateMealItem(u, mealId, itemId, grams) {
+      const list = getMeals(u)
+      const meal = list.find((m) => m.id === mealId)
+      if (!meal) throw new Error('not_found')
+      const idx = meal.items.findIndex((it) => it.id === itemId)
+      if (idx < 0) throw new Error('not_found')
+      meal.items[idx] = rescaleItem(meal.items[idx], grams)
+      Object.assign(meal, aggregateItems(meal.items))
+      return stripInternal(meal)
+    },
+
+    async deleteMealItem(u, mealId, itemId) {
+      const list = getMeals(u)
+      const meal = list.find((m) => m.id === mealId)
+      if (!meal) throw new Error('not_found')
+      if (meal.items.length <= 1) throw new LastItemError()
+      meal.items = meal.items.filter((it) => it.id !== itemId)
+      Object.assign(meal, aggregateItems(meal.items))
+      return stripInternal(meal)
     },
 
     async addWorkout(u, req, date) {

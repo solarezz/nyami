@@ -63,9 +63,10 @@ const RECOGNIZE_SYSTEM = `Ты — точный нутрициолог. Опре
   "packaged": true|false,        // магазинный/брендовый продукт?
   "query": "бренд и название для поиска в базе продуктов (если packaged), иначе ''",
   "confidence": число 0..1,      // высокий (>0.85) только если прочитал этикетку или очень стандартный продукт
-  "extras": [ { "name":"...", "emoji":"...", "grams":число, "kcal":число } ]
+  "extras": [ { "name":"...", "emoji":"...", "grams":число, "kcal":число, "protein":число, "carbs":число, "fat":число } ]
 }
-extras — отдельные заметные компоненты (гарнир, хлеб, соус), если есть; иначе [].`
+extras — отдельные заметные компоненты (гарнир, хлеб, соус), если есть; иначе [].
+Для КАЖДОГО extra считай protein/carbs/fat так же внимательно, как для основного блюда — не оставляй их нулями.`
 
 function num(v: unknown, fallback = 0): number {
   const n = typeof v === 'string' ? parseFloat(v) : (v as number)
@@ -83,7 +84,7 @@ interface RawReco {
   packaged: boolean
   query: string
   confidence: number
-  extras: { name: string; emoji: string; grams: number; kcal: number }[]
+  extras: { name: string; emoji: string; grams: number; kcal: number; protein: number; carbs: number; fat: number }[]
 }
 
 function coerceRaw(raw: string, fallbackName?: string): RawReco {
@@ -119,6 +120,9 @@ function coerceRaw(raw: string, fallbackName?: string): RawReco {
           emoji: String(e.emoji ?? '🍴').slice(0, 4),
           grams: Math.max(1, Math.round(num(e.grams, 50))),
           kcal: Math.max(0, Math.round(num(e.kcal))),
+          protein: Math.max(0, Math.round(num(e.protein))),
+          carbs: Math.max(0, Math.round(num(e.carbs))),
+          fat: Math.max(0, Math.round(num(e.fat))),
         }))
       : [],
   }

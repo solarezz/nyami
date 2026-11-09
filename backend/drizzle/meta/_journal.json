@@ -50,6 +50,13 @@
       "when": 1794244909248,
       "tag": "0006_certain_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794245450614,
+      "tag": "0007_dizzy_ezekiel",
+      "breakpoints": true
     }
   ]
 }

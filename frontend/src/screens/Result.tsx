@@ -7,6 +7,8 @@ import type { Screen } from '../App'
 export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { pending, setPending, addMeal } = useData()
   const [grams, setGrams] = useState(pending?.grams ?? 100)
+  // Масса каждого extra редактируется независимо от основного блюда и друг от друга.
+  const [extraGrams, setExtraGrams] = useState<number[]>(() => pending?.extras.map((e) => e.grams) ?? [])
   const [saving, setSaving] = useState(false)
 
   // Если распознавание не готово (зашли напрямую) — вернём на «Добавить».
@@ -22,22 +24,29 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const kcalPer = r.kcal / r.grams
   const kcal = Math.round(kcalPer * grams)
   const scale = grams / r.grams
-  const extrasKcal = r.extras.reduce((s, e) => s + e.kcal, 0)
-  const total = kcal + extrasKcal
+  const scaledExtras = r.extras.map((e, i) => {
+    const g = extraGrams[i] ?? e.grams
+    const s = e.grams > 0 ? g / e.grams : 1
+    return {
+      name: e.name, emoji: e.emoji, grams: g,
+      kcal: Math.round(e.kcal * s), protein: Math.round(e.protein * s), carbs: Math.round(e.carbs * s), fat: Math.round(e.fat * s),
+    }
+  })
+  const total = kcal + scaledExtras.reduce((s, e) => s + e.kcal, 0)
 
   const confirm = async () => {
     if (saving) return
     setSaving(true)
     try {
+      // Один приём пищи с несколькими компонентами — масса и БЖУ каждого компонента
+      // хранятся независимо (можно поменять порцию гарнира, не трогая основное блюдо).
       await addMeal({
-        name: r.name, emoji: r.emoji, kcal,
-        protein: Math.round(r.protein * scale),
-        carbs: Math.round(r.carbs * scale),
-        fat: Math.round(r.fat * scale),
+        name: r.name, emoji: r.emoji,
+        items: [
+          { name: r.name, emoji: r.emoji, grams, kcal, protein: Math.round(r.protein * scale), carbs: Math.round(r.carbs * scale), fat: Math.round(r.fat * scale) },
+          ...scaledExtras,
+        ],
       })
-      for (const e of r.extras) {
-        await addMeal({ name: e.name, emoji: e.emoji, kcal: e.kcal, protein: 0, carbs: 0, fat: 0 })
-      }
       setPending(null)
       onNavigate('today')
     } catch {
@@ -71,14 +80,20 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           </div>
         </div>
 
-        {r.extras.map((e) => (
-          <div className="meal" key={e.name}>
-            <div className="thumb" style={{ background: 'var(--carb-soft)' }}>{e.emoji}</div>
-            <div className="mm">
-              <div className="nm">{e.name}</div>
-              <div className="chips"><span className="muted" style={{ fontSize: 12 }}>{e.grams} г · добавил ИИ</span></div>
+        {r.extras.map((e, i) => (
+          <div className="card" key={`${e.name}-${i}`} style={{ marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+              <div className="thumb" style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--carb-soft)', display: 'grid', placeItems: 'center', fontSize: 22, flex: 'none' }}>{e.emoji}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 900 }}>{e.name}</div>
+                <span className="muted" style={{ fontSize: 12 }}>добавил ИИ</span>
+              </div>
+              <div className="kc">{scaledExtras[i].kcal}<small> ккал</small></div>
             </div>
-            <div className="rt"><div className="kc">{e.kcal}<small> ккал</small></div></div>
+            <NumberField
+              label="Масса, г" value={extraGrams[i] ?? e.grams} min={1} max={2000} step={10}
+              onChange={(v) => setExtraGrams((prev) => { const next = [...prev]; next[i] = v; return next })}
+            />
           </div>
         ))}
 

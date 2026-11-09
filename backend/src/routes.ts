@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify'
 import type {
   MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition, UpdateFastingRequest,
-  AddWorkoutRequest, RecognizeWorkoutRequest, SetWeightRequest,
+  AddWorkoutRequest, RecognizeWorkoutRequest, SetWeightRequest, UpdateMealItemRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
-import { type NyamiRepo } from './repo.js'
+import { type NyamiRepo, LastItemError } from './repo.js'
 import { getAi } from './ai/index.js'
 import { offByBarcode } from './ai/off.js'
 import { fatsecretByBarcode } from './ai/fatsecret.js'
@@ -37,14 +37,46 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
 
     api.get('/api/week', async (req) => repo.getWeek(req.user.id))
 
-    api.post<{ Body: AddMealRequest & { date?: string } }>('/api/meals', async (req) => {
+    api.post<{ Body: AddMealRequest & { date?: string } }>('/api/meals', async (req, reply) => {
       const { date, ...meal } = req.body
+      if (!Array.isArray(meal.items) || meal.items.length === 0) {
+        return reply.code(400).send({ error: 'items_required' })
+      }
       return repo.addMeal(req.user.id, meal, dayParam(date))
     })
 
     api.delete<{ Params: { id: string } }>('/api/meals/:id', async (req) => {
       await repo.deleteMeal(req.user.id, req.params.id)
       return { ok: true }
+    })
+
+    // Изменить массу одного компонента приёма — остальные КБЖУ компонента и агрегат
+    // приёма пересчитываются пропорционально.
+    api.patch<{ Params: { mealId: string; itemId: string }; Body: UpdateMealItemRequest }>(
+      '/api/meals/:mealId/items/:itemId',
+      async (req, reply) => {
+        const grams = Number(req.body?.grams)
+        if (!Number.isFinite(grams) || grams <= 0 || grams > 5000) {
+          return reply.code(400).send({ error: 'invalid_grams' })
+        }
+        try {
+          return await repo.updateMealItem(req.user.id, req.params.mealId, req.params.itemId, grams)
+        } catch (e) {
+          if (e instanceof Error && e.message === 'not_found') return reply.code(404).send({ error: 'not_found' })
+          throw e
+        }
+      },
+    )
+
+    // Удалить один компонент приёма. Последний компонент удалять нельзя — для этого есть DELETE /api/meals/:id.
+    api.delete<{ Params: { mealId: string; itemId: string } }>('/api/meals/:mealId/items/:itemId', async (req, reply) => {
+      try {
+        return await repo.deleteMealItem(req.user.id, req.params.mealId, req.params.itemId)
+      } catch (e) {
+        if (e instanceof LastItemError) return reply.code(400).send({ error: 'last_item' })
+        if (e instanceof Error && e.message === 'not_found') return reply.code(404).send({ error: 'not_found' })
+        throw e
+      }
     })
 
     // Тренировка: оценка сожжённых калорий по описанию (нужен вес пользователя для MET).

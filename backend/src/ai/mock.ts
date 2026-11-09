@@ -4,7 +4,7 @@ export function mockRecognize(): Recognition {
   return {
     name: 'Борщ со сметаной', emoji: '🍲', grams: 350, kcal: 250,
     protein: 9, carbs: 27, fat: 12, confidence: 0.85,
-    extras: [{ name: 'Хлеб ржаной', emoji: '🍞', grams: 80, kcal: 190 }],
+    extras: [{ name: 'Хлеб ржаной', emoji: '🍞', grams: 80, kcal: 190, protein: 6, carbs: 38, fat: 1 }],
   }
 }
 

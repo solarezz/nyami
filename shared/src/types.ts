@@ -11,16 +11,31 @@ export interface MacroProgress {
   goal: number
 }
 
+/** Компонент приёма пищи (ингредиент/добавка) — независимо масштабируется по массе. */
+export interface MealItem {
+  id: string
+  name: string
+  emoji: string
+  grams: number
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
 export interface Meal {
   id: string
   name: string
   emoji: string
   time: string
   mealType: MealType
+  // Агрегат по items (сумма) — хранится отдельно для быстрого доступа, но всегда
+  // пересчитывается из items при любом изменении состава.
   kcal: number
   protein: number
   carbs: number
   fat: number
+  items: MealItem[]
 }
 
 export interface Workout {
@@ -87,6 +102,17 @@ export interface ChatMessage {
   text: string
 }
 
+/** Дополнительный компонент, распознанный вместе с основным блюдом (гарнир, хлеб, соус). */
+export interface RecognizedExtra {
+  name: string
+  emoji: string
+  grams: number
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
 /** Результат распознавания еды нейросетью (черновик перед добавлением). */
 export interface Recognition {
   name: string
@@ -97,7 +123,7 @@ export interface Recognition {
   carbs: number
   fat: number
   confidence: number // 0..1, погрешность оценки
-  extras: { name: string; emoji: string; grams: number; kcal: number }[]
+  extras: RecognizedExtra[]
 }
 
 // ---- Контракты API (запрос/ответ) ----
@@ -119,14 +145,27 @@ export interface UpdateProfileRequest {
   timezone?: string // IANA; если не передан — сервер оставляет текущее значение
 }
 
-export interface AddMealRequest {
+/** Компонент в составе добавляемого приёма пищи (без id — назначается сервером). */
+export interface MealItemInput {
   name: string
   emoji: string
+  grams: number
   kcal: number
   protein: number
   carbs: number
   fat: number
+}
+
+export interface AddMealRequest {
+  name: string
+  emoji: string
   mealType?: MealType // если задан — приём идёт в эту категорию; иначе определяется по времени
+  items: MealItemInput[] // минимум один компонент; kcal/БЖУ приёма = сумма по items
+}
+
+/** Изменение массы одного компонента приёма — остальные КБЖУ компонента пересчитываются пропорционально. */
+export interface UpdateMealItemRequest {
+  grams: number
 }
 
 export interface AddWorkoutRequest {

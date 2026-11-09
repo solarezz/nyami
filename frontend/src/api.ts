@@ -37,6 +37,9 @@ export const api = {
   getWeek: () => req<WeekResponse>('/api/week'),
   addMeal: (body: AddMealRequest, date?: string) => req<Meal>('/api/meals', { method: 'POST', body: JSON.stringify({ ...body, date }) }),
   deleteMeal: (id: string) => req<{ ok: boolean }>(`/api/meals/${id}`, { method: 'DELETE' }),
+  updateMealItem: (mealId: string, itemId: string, grams: number) =>
+    req<Meal>(`/api/meals/${mealId}/items/${itemId}`, { method: 'PATCH', body: JSON.stringify({ grams }) }),
+  deleteMealItem: (mealId: string, itemId: string) => req<Meal>(`/api/meals/${mealId}/items/${itemId}`, { method: 'DELETE' }),
   recognizeWorkout: (text: string) => req<WorkoutRecognition>('/api/workout/recognize', { method: 'POST', body: JSON.stringify({ text }) }),
   addWorkout: (body: AddWorkoutRequest, date?: string) => req<Workout>('/api/workouts', { method: 'POST', body: JSON.stringify({ ...body, date }) }),
   deleteWorkout: (id: string) => req<{ ok: boolean }>(`/api/workouts/${id}`, { method: 'DELETE' }),

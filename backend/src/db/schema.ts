@@ -74,10 +74,26 @@ export const meals = pgTable('meals', {
   telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
   name: text('name').notNull(),
   emoji: text('emoji').notNull().default('🍽️'),
+  // Агрегат по meal_items (сумма) — кэш для быстрого чтения, источник истины — meal_items.
   kcal: integer('kcal').notNull(),
   protein: integer('protein').notNull().default(0),
   carbs: integer('carbs').notNull().default(0),
   fat: integer('fat').notNull().default(0),
   mealType: text('meal_type').notNull().default('snack'),
   eatenAt: timestamp('eaten_at').notNull().defaultNow(),
+})
+
+// Компоненты приёма пищи (ингредиенты/добавки) — каждый со своей массой и КБЖУ,
+// независимо масштабируемый. meals.kcal/protein/carbs/fat — сумма по этим строкам.
+export const mealItems = pgTable('meal_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  mealId: uuid('meal_id').notNull().references(() => meals.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  emoji: text('emoji').notNull().default('🍽️'),
+  grams: real('grams').notNull(),
+  kcal: integer('kcal').notNull(),
+  protein: integer('protein').notNull().default(0),
+  carbs: integer('carbs').notNull().default(0),
+  fat: integer('fat').notNull().default(0),
+  sortOrder: integer('sort_order').notNull().default(0),
 })

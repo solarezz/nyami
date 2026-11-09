@@ -30,7 +30,8 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     if (busy) return
     setBusy('quick')
     try {
-      await addMeal({ name: f.name, emoji: f.emoji, kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat })
+      // Масса неизвестна (частое блюдо хранит только итоговые КБЖУ) — 100 г нейтральная оценка порции.
+      await addMeal({ name: f.name, emoji: f.emoji, items: [{ name: f.name, emoji: f.emoji, grams: 100, kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat }] })
       onNavigate('today')
     } catch {
       setBusy(false)

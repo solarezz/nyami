@@ -1,12 +1,13 @@
-import { and, eq, gte, lt, lte, asc, desc } from 'drizzle-orm'
-import type { DaySummary, Profile, Meal, AddMealRequest, UpdateProfileRequest, MealType, FastingProtocol, Workout } from '@nyami/shared'
+import { and, eq, gte, lt, lte, asc, desc, inArray } from 'drizzle-orm'
+import type { DaySummary, Profile, Meal, MealItem, AddMealRequest, UpdateProfileRequest, MealType, FastingProtocol, Workout } from '@nyami/shared'
 import {
   type NyamiRepo, WATER_GOAL, computeStreak, lastSevenDays, topFrequent, mealTypeForHour, resolveEntryInstant,
+  aggregateItems, rescaleItem, LastItemError,
 } from '../repo.js'
 import { computeNorm } from '../nutrition.js'
 import { localDateKey, localDayRange, localHour, formatHHMM, addDaysToDateStr } from '../tz.js'
 import { db, type Db } from './client.js'
-import { users, meals, days, weights, workouts, mealReminders, dailyTargets } from './schema.js'
+import { users, meals, mealItems, days, weights, workouts, mealReminders, dailyTargets } from './schema.js'
 
 type Target = { calories: number; protein: number; fat: number; carbs: number }
 
@@ -88,7 +89,8 @@ export function createDrizzleRepo(): NyamiRepo {
         .where(and(eq(meals.telegramId, userId), gte(meals.eatenAt, start), lt(meals.eatenAt, end)))
         .orderBy(asc(meals.eatenAt))
 
-      const list: Meal[] = rows.map((m) => toMeal(m, u.timezone))
+      const itemsByMeal = await loadItemsFor(database, rows.map((m) => m.id))
+      const list: Meal[] = rows.map((m) => toMeal(m, itemsByMeal.get(m.id) ?? [], u.timezone))
       const sum = (k: keyof Meal) => list.reduce((s, m) => s + (Number(m[k]) || 0), 0)
 
       const wkRows = await database
@@ -152,16 +154,61 @@ export function createDrizzleRepo(): NyamiRepo {
       const u = await ensureUser(userId)
       const resolvedDate = date ?? localDateKey(new Date(), u.timezone)
       const eatenAt = resolveEntryInstant(resolvedDate, u.timezone)
-      const inserted = await database
-        .insert(meals)
-        // Тип из запроса приоритетнее; если не задан — определяем по локальному часу.
-        .values({ telegramId: userId, eatenAt, ...req, mealType: req.mealType ?? mealTypeForHour(localHour(eatenAt, u.timezone)) })
-        .returning()
-      return toMeal(inserted[0], u.timezone)
+      const mealType = req.mealType ?? mealTypeForHour(localHour(eatenAt, u.timezone))
+      const agg = aggregateItems(req.items)
+
+      return database.transaction(async (tx) => {
+        const insertedMeal = (await tx
+          .insert(meals)
+          .values({ telegramId: userId, eatenAt, name: req.name, emoji: req.emoji, mealType, ...agg })
+          .returning())[0]
+        const insertedItems = await tx
+          .insert(mealItems)
+          .values(req.items.map((it, i) => ({ mealId: insertedMeal.id, ...it, sortOrder: i })))
+          .returning()
+        return toMeal(insertedMeal, insertedItems.map(toMealItem), u.timezone)
+      })
     },
 
     async deleteMeal(userId, mealId) {
+      // meal_items удаляются каскадом (ON DELETE CASCADE на meal_id).
       await database.delete(meals).where(and(eq(meals.id, mealId), eq(meals.telegramId, userId)))
+    },
+
+    async updateMealItem(userId, mealId, itemId, grams) {
+      const u = await ensureUser(userId)
+      return database.transaction(async (tx) => {
+        const mealRows = await tx.select().from(meals).where(and(eq(meals.id, mealId), eq(meals.telegramId, userId))).limit(1)
+        if (!mealRows[0]) throw new Error('not_found')
+        const itemRows = await tx.select().from(mealItems).where(and(eq(mealItems.id, itemId), eq(mealItems.mealId, mealId))).limit(1)
+        if (!itemRows[0]) throw new Error('not_found')
+
+        const rescaled = rescaleItem(toMealItem(itemRows[0]), grams)
+        await tx.update(mealItems)
+          .set({ grams: rescaled.grams, kcal: rescaled.kcal, protein: rescaled.protein, carbs: rescaled.carbs, fat: rescaled.fat })
+          .where(eq(mealItems.id, itemId))
+
+        const allItems = (await tx.select().from(mealItems).where(eq(mealItems.mealId, mealId)).orderBy(asc(mealItems.sortOrder))).map(toMealItem)
+        const updatedMeal = (await tx.update(meals).set(aggregateItems(allItems)).where(eq(meals.id, mealId)).returning())[0]
+        return toMeal(updatedMeal, allItems, u.timezone)
+      })
+    },
+
+    async deleteMealItem(userId, mealId, itemId) {
+      const u = await ensureUser(userId)
+      return database.transaction(async (tx) => {
+        const mealRows = await tx.select().from(meals).where(and(eq(meals.id, mealId), eq(meals.telegramId, userId))).limit(1)
+        if (!mealRows[0]) throw new Error('not_found')
+
+        const existing = await tx.select().from(mealItems).where(eq(mealItems.mealId, mealId))
+        if (!existing.some((it) => it.id === itemId)) throw new Error('not_found')
+        if (existing.length <= 1) throw new LastItemError()
+
+        await tx.delete(mealItems).where(and(eq(mealItems.id, itemId), eq(mealItems.mealId, mealId)))
+        const remaining = (await tx.select().from(mealItems).where(eq(mealItems.mealId, mealId)).orderBy(asc(mealItems.sortOrder))).map(toMealItem)
+        const updatedMeal = (await tx.update(meals).set(aggregateItems(remaining)).where(eq(meals.id, mealId)).returning())[0]
+        return toMeal(updatedMeal, remaining, u.timezone)
+      })
     },
 
     async addWorkout(userId, req, date) {
@@ -234,11 +281,28 @@ export function createDrizzleRepo(): NyamiRepo {
   }
 }
 
-function toMeal(m: typeof meals.$inferSelect, timeZone: string): Meal {
+async function loadItemsFor(database: Db, mealIds: string[]): Promise<Map<string, MealItem[]>> {
+  const map = new Map<string, MealItem[]>()
+  if (mealIds.length === 0) return map
+  const rows = await database.select().from(mealItems).where(inArray(mealItems.mealId, mealIds)).orderBy(asc(mealItems.sortOrder))
+  for (const r of rows) {
+    const arr = map.get(r.mealId) ?? []
+    arr.push(toMealItem(r))
+    map.set(r.mealId, arr)
+  }
+  return map
+}
+
+function toMealItem(r: typeof mealItems.$inferSelect): MealItem {
+  return { id: r.id, name: r.name, emoji: r.emoji, grams: r.grams, kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat }
+}
+
+function toMeal(m: typeof meals.$inferSelect, items: MealItem[], timeZone: string): Meal {
   return {
     id: m.id, name: m.name, emoji: m.emoji, time: formatHHMM(m.eatenAt, timeZone),
     mealType: m.mealType as MealType,
     kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+    items,
   }
 }
 
