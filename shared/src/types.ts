@@ -211,3 +211,108 @@ export interface FrequentMeal {
   carbs: number
   fat: number
 }
+
+// ---- Тренировочный модуль (силовые тренировки по программе) ----
+
+export type ExerciseDifficulty = 'easy' | 'medium' | 'hard'
+
+export interface Exercise {
+  id: string
+  name: string
+  description: string | null
+  muscleGroup: string
+  primaryMuscles: string[]
+  secondaryMuscles: string[]
+  equipment: string | null
+  equipmentPhotoUrl: string | null
+  techniqueVideoUrl: string | null
+  difficulty: ExerciseDifficulty
+}
+
+export interface ExerciseLastPerformance {
+  weightKg: number | null
+  repetitions: number | null
+  performedAt: string // ISO
+}
+
+export interface PersonalRecord {
+  weightKg: number
+  repetitions: number
+}
+
+/** Полная карточка упражнения — для экрана с фото/анимацией/мышцами/заменой. */
+export interface ExerciseDetail extends Exercise {
+  lastPerformance: ExerciseLastPerformance | null
+  personalRecord: PersonalRecord | null
+  substitutes: Exercise[]
+}
+
+export interface ProgramExercise {
+  id: string // id строки training_program_exercises
+  exercise: Exercise
+  targetSets: number
+  targetRepsMin: number
+  targetRepsMax: number
+  restSeconds: number
+}
+
+export interface ProgramDay {
+  id: string
+  name: string
+  weekday: number | null // 1 (пн) .. 7 (вс), null если не привязан к дню недели
+  exercises: ProgramExercise[]
+}
+
+export interface TrainingProgram {
+  id: string
+  name: string
+  description: string | null
+  isTemplate: boolean
+  days: ProgramDay[]
+}
+
+export type TrainingSessionStatus = 'in_progress' | 'completed' | 'cancelled'
+
+export interface ExerciseSetRecord {
+  id: string
+  exerciseId: string
+  setNumber: number
+  weightKg: number | null
+  repetitions: number | null
+  completed: boolean
+}
+
+export interface TrainingSession {
+  id: string
+  programId: string | null
+  programDayId: string | null
+  name: string
+  startedAt: string
+  completedAt: string | null
+  status: TrainingSessionStatus
+  sets: ExerciseSetRecord[]
+}
+
+export interface StartSessionRequest {
+  programId?: string
+  programDayId?: string
+  name: string
+}
+
+export interface RecordSetRequest {
+  exerciseId: string
+  setNumber: number
+  weightKg?: number
+  repetitions?: number
+  completed?: boolean
+}
+
+/**
+ * Адаптивное расписание тренировок — выведено из фактической истории сессий
+ * (аналогично личному среднему времени приёма пищи), не настраивается вручную.
+ */
+export interface TrainingPattern {
+  typicalWeekdays: number[] // подмножество 1..7 — дни, когда пользователь обычно тренируется
+  typicalTimeOfDay: 'morning' | 'afternoon' | 'evening' | null
+  sampleSize: number // сколько завершённых тренировок учтено
+}

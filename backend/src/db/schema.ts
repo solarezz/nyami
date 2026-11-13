@@ -97,3 +97,87 @@ export const mealItems = pgTable('meal_items', {
   fat: integer('fat').notNull().default(0),
   sortOrder: integer('sort_order').notNull().default(0),
 })
+
+// ===== Тренировочный модуль (силовые тренировки по программе). =====
+// `workouts` выше остаётся отдельным путём для кардио/AI-оценки калорий — не трогаем.
+
+// Библиотека упражнений. Фото/видео — внешние URL (без своего файлового хранилища на этом этапе).
+export const exercises = pgTable('exercises', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  description: text('description'),
+  muscleGroup: text('muscle_group').notNull(), // основная категория для списков/фильтров
+  primaryMuscles: text('primary_muscles').array().notNull().default([]),
+  secondaryMuscles: text('secondary_muscles').array().notNull().default([]),
+  equipment: text('equipment'),
+  equipmentPhotoUrl: text('equipment_photo_url'),
+  techniqueVideoUrl: text('technique_video_url'),
+  difficulty: text('difficulty').notNull().default('medium'),
+  isSystem: boolean('is_system').notNull().default(true),
+  createdByUserId: bigint('created_by_user_id', { mode: 'number' }).references(() => users.telegramId),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+// Чем заменить упражнение (напр. нет нужного тренажёра в зале). Направленная связь,
+// при показе читаем в обе стороны — пара должна быть взаимной по смыслу.
+export const exerciseSubstitutes = pgTable('exercise_substitutes', {
+  exerciseId: uuid('exercise_id').notNull().references(() => exercises.id, { onDelete: 'cascade' }),
+  substituteExerciseId: uuid('substitute_exercise_id').notNull().references(() => exercises.id, { onDelete: 'cascade' }),
+}, (t) => ({ pk: primaryKey({ columns: [t.exerciseId, t.substituteExerciseId] }) }))
+
+// Программа тренировок. user_id = null → системный шаблон (Full Body, PPL и т.п.).
+export const trainingPrograms = pgTable('training_programs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: bigint('user_id', { mode: 'number' }).references(() => users.telegramId),
+  name: text('name').notNull(),
+  description: text('description'),
+  isTemplate: boolean('is_template').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+// День программы (напр. "День 2 · Pull"). weekday — если жёстко привязан к дню недели;
+// null — пользователь выбирает день сам, тогда ленту недели подсвечивает адаптивное
+// расписание (по фактической истории training_sessions), а не этот столбец.
+export const trainingProgramDays = pgTable('training_program_days', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  programId: uuid('program_id').notNull().references(() => trainingPrograms.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  weekday: integer('weekday'), // 1 (пн) .. 7 (вс), nullable
+  sortOrder: integer('sort_order').notNull().default(0),
+})
+
+export const trainingProgramExercises = pgTable('training_program_exercises', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  programDayId: uuid('program_day_id').notNull().references(() => trainingProgramDays.id, { onDelete: 'cascade' }),
+  exerciseId: uuid('exercise_id').notNull().references(() => exercises.id),
+  sortOrder: integer('sort_order').notNull().default(0),
+  targetSets: integer('target_sets').notNull().default(3),
+  targetRepsMin: integer('target_reps_min').notNull().default(8),
+  targetRepsMax: integer('target_reps_max').notNull().default(12),
+  restSeconds: integer('rest_seconds').notNull().default(90),
+})
+
+// Тренировочная сессия — запуск тренировки (по программе или свободная).
+export const trainingSessions = pgTable('training_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().references(() => users.telegramId),
+  programId: uuid('program_id').references(() => trainingPrograms.id),
+  programDayId: uuid('program_day_id').references(() => trainingProgramDays.id),
+  name: text('name').notNull(),
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+  status: text('status').notNull().default('in_progress'), // in_progress | completed | cancelled
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+// Один подход одного упражнения внутри сессии.
+export const exerciseSets = pgTable('exercise_sets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  trainingSessionId: uuid('training_session_id').notNull().references(() => trainingSessions.id, { onDelete: 'cascade' }),
+  exerciseId: uuid('exercise_id').notNull().references(() => exercises.id),
+  setNumber: integer('set_number').notNull(),
+  weightKg: real('weight_kg'),
+  repetitions: integer('repetitions'),
+  completed: boolean('completed').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})

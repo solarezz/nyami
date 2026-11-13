@@ -11,7 +11,8 @@
     "eval": "tsx eval/run.ts",
     "notify": "tsx scripts/notify.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed-exercises": "tsx scripts/seed-exercises.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

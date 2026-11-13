@@ -7,6 +7,8 @@ import { config } from './config.js'
 import { registerRoutes } from './routes.js'
 import { createMockRepo } from './repo.js'
 import { createDrizzleRepo } from './db/repo.js'
+import { createMockTrainingRepo } from './training.js'
+import { createDrizzleTrainingRepo } from './db/trainingRepo.js'
 import { startScheduler } from './notifications.js'
 
 const app = Fastify({
@@ -20,7 +22,8 @@ await app.register(cors, {
 })
 
 const repo = config.databaseUrl ? createDrizzleRepo() : createMockRepo()
-registerRoutes(app, repo)
+const training = config.databaseUrl ? createDrizzleTrainingRepo() : createMockTrainingRepo()
+registerRoutes(app, repo, training)
 
 // В проде тот же сервер отдаёт собранный фронт (frontend/dist). В dev его нет — фронт крутит Vite.
 const staticDir = fileURLToPath(new URL('../../frontend/dist', import.meta.url))

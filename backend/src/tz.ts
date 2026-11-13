@@ -66,3 +66,10 @@ export function startOfLocalDay(date: string, timeZone: string): Date {
 export function localDayRange(date: string, timeZone: string): { start: Date; end: Date } {
   return { start: startOfLocalDay(date, timeZone), end: startOfLocalDay(addDaysToDateStr(date, 1), timeZone) }
 }
+
+/** Локальный день недели instant'а в timeZone: 1 (пн) .. 7 (вс) — для адаптивного расписания тренировок. */
+export function localIsoWeekday(instant: Date, timeZone: string): number {
+  const key = localDateKey(instant, timeZone)
+  const sundayIsZero = new Date(`${key}T00:00:00.000Z`).getUTCDay()
+  return sundayIsZero === 0 ? 7 : sundayIsZero
+}

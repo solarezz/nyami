@@ -2,9 +2,11 @@ import type { FastifyInstance } from 'fastify'
 import type {
   MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition, UpdateFastingRequest,
   AddWorkoutRequest, RecognizeWorkoutRequest, SetWeightRequest, UpdateMealItemRequest,
+  StartSessionRequest, RecordSetRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
 import { type NyamiRepo, LastItemError } from './repo.js'
+import type { TrainingRepo } from './training.js'
 import { getAi } from './ai/index.js'
 import { offByBarcode } from './ai/off.js'
 import { fatsecretByBarcode } from './ai/fatsecret.js'
@@ -13,7 +15,7 @@ import { fatsecretByBarcode } from './ai/fatsecret.js'
 // «сегодня» по локальной таймзоне пользователя (она есть только после ensureUser).
 const dayParam = (d: unknown): string | undefined => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined)
 
-export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
+export function registerRoutes(app: FastifyInstance, repo: NyamiRepo, training: TrainingRepo): void {
   const ai = getAi()
 
   app.get('/api/health', async () => ({ ok: true }))
@@ -133,6 +135,59 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo): void {
         confidence: 0.95, extras: [],
       }
       return reco
+    })
+
+    // ---- Тренировочный модуль ----
+
+    // Библиотека упражнений (опционально фильтр по группе мышц).
+    api.get<{ Querystring: { muscleGroup?: string } }>('/api/exercises', async (req) => training.listExercises(req.query.muscleGroup))
+
+    // Карточка упражнения: фото/видео, мышцы, последний результат, личный рекорд, замены.
+    api.get<{ Params: { id: string } }>('/api/exercises/:id', async (req, reply) => {
+      const ex = await training.getExercise(req.user.id, req.params.id)
+      if (!ex) return reply.code(404).send({ error: 'not_found' })
+      return ex
+    })
+
+    api.get('/api/training/programs', async (req) => training.listPrograms(req.user.id))
+
+    api.get<{ Params: { id: string } }>('/api/training/program-days/:id', async (req, reply) => {
+      const day = await training.getProgramDay(req.params.id)
+      if (!day) return reply.code(404).send({ error: 'not_found' })
+      return day
+    })
+
+    // Адаптивное расписание: типичные дни недели/время суток по фактической истории
+    // тренировок (нужна таймзона пользователя — берём из профиля).
+    api.get('/api/training/pattern', async (req) => {
+      const profile = await repo.getProfile(req.user.id)
+      return training.inferTrainingPattern(req.user.id, profile.timezone)
+    })
+
+    api.post<{ Body: StartSessionRequest }>('/api/training/sessions', async (req) => training.startSession(req.user.id, req.body))
+
+    api.get<{ Params: { id: string } }>('/api/training/sessions/:id', async (req, reply) => {
+      const session = await training.getSession(req.user.id, req.params.id)
+      if (!session) return reply.code(404).send({ error: 'not_found' })
+      return session
+    })
+
+    api.post<{ Params: { id: string }; Body: RecordSetRequest }>('/api/training/sessions/:id/sets', async (req, reply) => {
+      try {
+        return await training.recordSet(req.user.id, req.params.id, req.body)
+      } catch (e) {
+        if (e instanceof Error && e.message === 'not_found') return reply.code(404).send({ error: 'not_found' })
+        throw e
+      }
+    })
+
+    api.post<{ Params: { id: string } }>('/api/training/sessions/:id/complete', async (req, reply) => {
+      try {
+        return await training.completeSession(req.user.id, req.params.id)
+      } catch (e) {
+        if (e instanceof Error && e.message === 'not_found') return reply.code(404).send({ error: 'not_found' })
+        throw e
+      }
     })
 
     // Коуч: отвечает с учётом контекста дня пользователя.

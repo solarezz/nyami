@@ -106,6 +106,69 @@
 **Contract**
 - Не требуется.
 
+## 5. Тренировочный модуль (библиотека упражнений, программы, сессии)
+
+Добавлено решением от 2026-11-13 (`PRODUCT_DECISIONS.md`) — раньше было сознательно
+отложено. `workouts` (кардио/AI-оценка калорий) остаётся как есть и дальше обслуживает
+прогулки/бег/ИИ-оценку — новые таблицы ниже обслуживают силовые тренировки по программе.
+
+**Expand**
+- `exercises`: `id uuid pk, name text, description text, muscle_group text` (основная
+  категория для списков/фильтров, напр. "спина"), `primary_muscles text[]`,
+  `secondary_muscles text[]` (для схемы тела — что подсвечивать ярко/тускло),
+  `equipment text`, `equipment_photo_url text`, `technique_video_url text`,
+  `difficulty text`, `is_system boolean default true`,
+  `created_by_user_id bigint references users nullable` (свои упражнения), `created_at`.
+  Фото/видео — внешние URL, не своя файловая система: для MVP библиотеки этого достаточно.
+- `exercise_substitutes`: `exercise_id uuid references exercises, substitute_exercise_id
+  uuid references exercises`, составной PK `(exercise_id, substitute_exercise_id)`.
+  Направленная связь, но при показе «чем заменить» читаем в обе стороны (`OR`).
+- `training_programs`: `id uuid pk, user_id bigint references users nullable` (`null` =
+  системный шаблон, как в §7.3 исходного ТЗ), `name text, description text,
+  is_template boolean, created_at`.
+- `training_program_days`: `id uuid pk, program_id uuid references training_programs,
+  name text` (напр. "День 2 · Pull"), `weekday int nullable` (1–7, если день программы
+  жёстко привязан к дню недели — для пользователей со свободным графиком остаётся null,
+  тогда расписание ведёт адаптивный вывод, см. ниже), `sort_order int`.
+- `training_program_exercises`: `id uuid pk, program_day_id uuid references
+  training_program_days, exercise_id uuid references exercises, sort_order int,
+  target_sets int, target_reps_min int, target_reps_max int, rest_seconds int`.
+- `training_sessions`: `id uuid pk, telegram_id bigint references users,
+  program_id uuid references training_programs nullable,
+  program_day_id uuid references training_program_days nullable,
+  name text, started_at timestamp, completed_at timestamp nullable,
+  status text default 'in_progress', created_at`.
+- `exercise_sets`: `id uuid pk, training_session_id uuid references training_sessions,
+  exercise_id uuid references exercises, set_number int, weight_kg real nullable,
+  repetitions int nullable, completed boolean default false, created_at`.
+  Заменяет собой более раннюю идею «свободного текста упражнения без каталога»
+  (старый план Этапа 5 в `IMPLEMENTATION_ROADMAP.md`) — теперь упражнение всегда из
+  каталога `exercises`, с полноценной историей/подсказками/заменами.
+
+**Backfill**
+- Не требуется — модуль полностью новый, старых данных для него нет.
+- Библиотека `exercises` наполняется стартовым набором (20–40 базовых упражнений по
+  группам мышц) отдельным сид-скриптом, не миграцией данных пользователя.
+
+**Switch**
+- `AddWorkout`/новый экран «Тренировки» используют `training_sessions`+`exercise_sets`
+  для силовых тренировок по программе; старый `workouts` остаётся для кардио и
+  быстрой AI-оценки (как сейчас) — два пути не конфликтуют, используются для разных
+  сценариев.
+- Экран карточки упражнения показывает `equipment_photo_url`/`technique_video_url`,
+  `primary_muscles`/`secondary_muscles` на схеме тела, кнопка «Заменить» — через
+  `exercise_substitutes`.
+- **Адаптивное расписание** (по требованию пользователя от 2026-11-13): отдельной
+  таблицы не заводим — считаем на лету из истории `training_sessions.started_at`
+  (день недели + час), тем же приёмом, что уже применён к напоминаниям о приёме пищи
+  (`mealThreshold`/`recentMealTimes` в `notifications.ts`): нужно 3+ сессии, чтобы
+  доверять личному паттерну, иначе — нейтральный дефолт. Используется для подсветки
+  «обычных» дней в ленте недели и для времени напоминания потренироваться
+  (утро/вечер — по факту, не по единому дефолту).
+
+**Contract**
+- Не требуется на этом этапе.
+
 ## Порядок выполнения
 
 1. `timezone` на `users` + переход логики дат — наименее рискованная миграция, ничего
@@ -113,8 +176,8 @@
 2. `daily_targets` — чинит реальный баг с историей целей.
 3. `meal_items` — самая заметная миграция, трогает основной сценарий (добавление еды);
    делать после того, как таймзона/даты стабильны, чтобы не путать два источника багов.
-4. `workout_sets` — независима от остального, можно делать параллельно с редизайном
-   экрана тренировок.
+4. Тренировочный модуль (раздел 5) — независим от 1–3, можно делать параллельно с
+   редизайном; `workouts` (кардио/AI-оценка) не трогаем, это отдельный путь.
 
 Каждая миграция — отдельный Drizzle migration-файл, отдельный коммит, проверяется на
 копии прод-данных перед обновлением сервера.
