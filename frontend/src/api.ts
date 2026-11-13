@@ -2,6 +2,7 @@ import type {
   MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile, FrequentMeal,
   AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest, UpdateFastingRequest,
   Workout, WorkoutRecognition, AddWorkoutRequest, SetWeightResponse,
+  TrainingProgram, TrainingPattern,
 } from '@nyami/shared'
 
 // В проде фронт и API на одном домене → относительный путь. В dev — локальный бэкенд.
@@ -49,4 +50,6 @@ export const api = {
   recognize: (body: RecognizeRequest) => req<Recognition>('/api/recognize', { method: 'POST', body: JSON.stringify(body) }),
   getByBarcode: (code: string) => req<Recognition>(`/api/barcode/${encodeURIComponent(code)}`),
   coach: (message: string) => req<CoachResponse>('/api/coach', { method: 'POST', body: JSON.stringify({ message }) }),
+  getTrainingPrograms: () => req<TrainingProgram[]>('/api/training/programs'),
+  getTrainingPattern: () => req<TrainingPattern>('/api/training/pattern'),
 }

@@ -282,3 +282,124 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .metric-card.align-start{align-items:flex-start;text-align:left;padding:14px;gap:8px;}
 .tile-value{font-size:20px;font-weight:900;line-height:1;}
 .tile-value small{font-size:12px;font-weight:800;color:var(--text-secondary);}
+
+/* ============================================================================
+   Дизайн-система v2 — "жёсткий спортивный стиль", решение от 2026-11-13
+   (docs/PRODUCT_DECISIONS.md). Источник правды — макет пользователя
+   (Nyami.dc.html, экспорт из Artifact Design): тёмная тема основная, плоские
+   цветные карточки без мягких теней, Onest + Space Grotesk, иконки Material
+   Symbols Sharp. Живёт рядом со старыми токенами/классами — экраны переводятся
+   по одному (Этап 7), ничего старое не ломает.
+   ============================================================================ */
+:root{
+  --v2-bg:#0C0D0B; --v2-s1:#171915; --v2-s2:#22251F; --v2-ln:#2D3129;
+  --v2-tx:#F2F4EE; --v2-mu:#9CA297; --v2-on:#0C0D0B;
+  --v2-lime:#C8F135; --v2-lime-ink:#C8F135;
+  --v2-org:#FF8A3D; --v2-org-ink:#FF9A55;
+  --v2-blu:#4DA8FF; --v2-blu-ink:#4DA8FF;
+  --v2-vio:#A88BFF; --v2-vio-ink:#A88BFF;
+  --v2-pnk:#FF6B8E; --v2-pnk-ink:#FF6B8E;
+  --v2-yel:#FFC53D; --v2-yel-ink:#FFC53D;
+  --v2-tea:#3ED9C0; --v2-tea-ink:#3ED9C0;
+  --v2-font-text:'Onest',system-ui,sans-serif;
+  --v2-font-num:'Space Grotesk','Onest',system-ui,sans-serif;
+}
+/* Telegram сам выставляет data-theme по теме клиента; вне Telegram — тёмная по умолчанию. */
+:root[data-theme="light"]{
+  --v2-bg:#ECEEE8; --v2-s1:#FFFFFF; --v2-s2:#F0F1EC; --v2-ln:#DCDFD6;
+  --v2-tx:#12140F; --v2-mu:#5C6257; --v2-on:#0C0D0B;
+  --v2-org:#F2731F; --v2-org-ink:#C2520A;
+  --v2-blu:#1F7FE0; --v2-blu-ink:#1F7FE0;
+  --v2-vio:#7556E6; --v2-vio-ink:#7556E6;
+  --v2-pnk:#E0406A; --v2-pnk-ink:#E0406A;
+  --v2-yel:#D99A00; --v2-yel-ink:#D99A00;
+  --v2-tea:#0F9C88; --v2-tea-ink:#0F9C88;
+  --v2-lime-ink:#4A7600;
+}
+
+.v2-screen{background:var(--v2-bg);color:var(--v2-tx);font-family:var(--v2-font-text);}
+.v2-screen .num{font-family:var(--v2-font-num);}
+.v2-screen b, .v2-screen strong{font-weight:700;}
+
+/* Иконки Material Symbols Sharp — вариативный шрифт (насыщенность/заливка/оптич. размер). */
+.msi{
+  font-family:'Material Symbols Sharp';font-weight:normal;font-style:normal;
+  display:inline-block;line-height:1;white-space:nowrap;word-wrap:normal;direction:ltr;
+  -webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;
+  font-feature-settings:'liga'; text-rendering:optimizeLegibility;
+  vertical-align:middle;flex:none;
+}
+.msi.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;}
+
+/* ---- Карточки / поверхности ---- */
+.v2-card{background:var(--v2-s1);border:1px solid var(--v2-ln);border-radius:16px;padding:14px;}
+.v2-tile{background:var(--v2-s2);border-radius:10px;padding:10px;}
+.v2-label{font:600 12px var(--v2-font-num);letter-spacing:.1em;text-transform:uppercase;color:var(--v2-mu);}
+
+/* ---- Шапка экрана: аватар + приветствие + стрик ---- */
+.v2-topbar{display:flex;align-items:center;gap:10px;padding:4px 0 2px;}
+.v2-avatar{width:40px;height:40px;border-radius:10px;background:var(--v2-vio);color:#fff;
+  display:flex;align-items:center;justify-content:center;font:700 16px var(--v2-font-text);flex:none;}
+.v2-streak{display:flex;align-items:center;gap:5px;background:color-mix(in srgb,var(--v2-org) 18%,transparent);
+  color:var(--v2-org-ink);border-radius:8px;padding:6px 10px;font:700 13px var(--v2-font-num);flex:none;}
+
+/* ---- Герой-карточка тренировки (основной модуль, ~60% веса экрана) ---- */
+.v2-hero{background:var(--v2-lime);color:var(--v2-on);border-radius:18px;padding:16px;
+  display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden;}
+.v2-hero-watermark{position:absolute;font-family:'Material Symbols Sharp';opacity:.09;pointer-events:none;}
+.v2-hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.12);
+  border-radius:6px;padding:5px 9px;font:700 12px var(--v2-font-num);letter-spacing:.06em;width:fit-content;position:relative;}
+.v2-hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1.5px solid rgba(0,0,0,.18);
+  border-bottom:1.5px solid rgba(0,0,0,.18);position:relative;}
+.v2-hero-stats>div{padding:10px 0;}
+.v2-hero-stats>div+div{padding-left:12px;border-left:1.5px solid rgba(0,0,0,.18);}
+.v2-hero-stat-n{font:700 26px/1 var(--v2-font-num);letter-spacing:-.03em;}
+.v2-hero-stat-l{font:600 11px var(--v2-font-text);opacity:.7;}
+.v2-weekbar{display:flex;gap:3px;}
+.v2-weekbar i{flex:1;height:6px;border-radius:3px;background:rgba(0,0,0,.18);}
+.v2-weekbar i.on{background:var(--v2-on);}
+.v2-daygrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;}
+.v2-daycell{border-radius:10px;padding:7px 0;display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--v2-s1);}
+.v2-daycell.rest{border:1px dashed var(--v2-ln);background:none;}
+.v2-daycell.today{background:var(--v2-on);color:var(--v2-lime);}
+.v2-daycell .dn{font:600 11px var(--v2-font-text);color:var(--v2-mu);}
+.v2-daycell.today .dn{color:inherit;opacity:.85;}
+.v2-daycell .dd{font:700 17px var(--v2-font-num);}
+
+/* ---- Кнопки v2 ---- */
+.v2-btn{height:54px;border-radius:10px;background:var(--v2-lime);color:var(--v2-on);border:none;
+  display:flex;align-items:center;justify-content:space-between;padding:0 7px 0 18px;
+  font:700 16px var(--v2-font-text);width:100%;font-family:inherit;}
+.v2-btn .v2-btn-ic{width:40px;height:40px;border-radius:8px;background:var(--v2-on);color:var(--v2-lime);
+  display:flex;align-items:center;justify-content:center;flex:none;}
+.v2-btn.on-dark{background:var(--v2-on);color:var(--v2-lime);}
+.v2-btn.on-dark .v2-btn-ic{background:var(--v2-lime);color:var(--v2-on);}
+.v2-btn:disabled{opacity:.6;}
+
+/* ---- Модуль питания (вторичный, ~40% веса) ---- */
+.v2-nutri-icon{width:32px;height:32px;border-radius:8px;background:var(--v2-org);color:var(--v2-on);
+  display:flex;align-items:center;justify-content:center;flex:none;}
+.v2-macro-row{display:flex;align-items:center;gap:5px;}
+.v2-macro-dot{width:7px;height:7px;flex:none;}
+.v2-meal-row{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--v2-ln);}
+.v2-meal-thumb{width:42px;height:42px;border-radius:8px;flex:none;
+  background:repeating-linear-gradient(135deg,#3a2a1c 0 5px,#2c2016 5px 10px);
+  display:flex;align-items:center;justify-content:center;font:500 7px ui-monospace,monospace;color:#c9a27e;}
+
+/* ---- Мини-карточки (вода/вес) ---- */
+.v2-mini-card{background:var(--v2-s1);border:1px solid var(--v2-ln);border-radius:14px;padding:12px;
+  display:flex;flex-direction:column;gap:8px;}
+.v2-mini-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;}
+
+/* ---- Нижняя навигация v2 ---- */
+.v2-nav{height:80px;background:var(--v2-s1);border-top:1px solid var(--v2-ln);
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;padding-bottom:14px;flex:none;}
+.v2-nav .ni{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--v2-mu);background:none;}
+.v2-nav .ni .nl{font:600 10px var(--v2-font-text);}
+.v2-nav .ni.on{color:var(--v2-tx);}
+.v2-nav .ni.on .nl{font-weight:700;}
+.v2-nav .ni.on .v2-nav-pill{background:var(--v2-lime);color:var(--v2-on);}
+.v2-nav-pill{width:46px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.v2-nav-fab{display:flex;justify-content:center;}
+.v2-nav-fab .v2-nav-fab-btn{width:52px;height:52px;border-radius:13px;background:var(--v2-lime);color:var(--v2-on);
+  display:flex;align-items:center;justify-content:center;margin-top:-22px;box-shadow:0 0 0 5px var(--v2-bg);}
