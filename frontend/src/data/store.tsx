@@ -26,6 +26,9 @@ interface DataState {
   retry: () => void
   pending: Recognition | null
   setPending: (r: Recognition | null) => void
+  // Фото, которым распознавали pending (только для превью на экране результата, не уходит на бэкенд повторно).
+  pendingImage: string | null
+  setPendingImage: (img: string | null) => void
   refresh: () => Promise<void>
   recognize: (req: RecognizeRequest) => Promise<Recognition>
   recognizeBarcode: (code: string) => Promise<Recognition>
@@ -54,6 +57,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<Recognition | null>(null)
+  const [pendingImage, setPendingImage] = useState<string | null>(null)
   const [selectedDate, setSelectedDateState] = useState(todayStr())
 
   // ref, чтобы колбэки всегда видели актуальную дату без пересоздания.
@@ -190,6 +194,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       selectedDate, isToday: selectedDate === todayStr(), setSelectedDate, retry,
       selectedMealType, setSelectedMealType,
       pending, setPending,
+      pendingImage, setPendingImage,
       refresh, recognize, recognizeBarcode, addMeal, deleteMeal, updateMealItem, deleteMealItem,
       recognizeWorkout, addWorkout, deleteWorkout,
       setWater, setWeight, updateProfile, setFasting, askCoach,

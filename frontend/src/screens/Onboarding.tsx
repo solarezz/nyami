@@ -1,4 +1,3 @@
-import { Wordmark } from '../components/Wordmark'
 import { ProfileForm } from '../components/ProfileForm'
 import { useData } from '../data/store'
 import type { Screen } from '../App'
@@ -23,9 +22,12 @@ export function Onboarding({ onNavigate }: { onNavigate: (s: Screen) => void }) 
   }
 
   return (
-    <div className="screen gap fade">
-      <Wordmark size={24} />
-      <div className="h2" style={{ fontSize: 24, lineHeight: 1.05 }}>Давай посчитаем<br />твою норму</div>
+    <div className="screen v2-screen gap fade">
+      <div className="v2-stepbar"><i className="on" /><i className="on" /><i className="on" /><i className="on" /></div>
+      <div>
+        <div className="v2-h1">Расскажите о себе</div>
+        <div className="v2-sub" style={{ marginTop: 6 }}>Нужно для расчёта нормы по формуле Миффлина — Сан Жеора.</div>
+      </div>
       <div className="scrollarea">
         <ProfileForm initial={initial} submitLabel="Начать" onSubmit={submit} />
       </div>

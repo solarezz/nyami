@@ -1,6 +1,7 @@
 import { ProfileForm } from '../components/ProfileForm'
 import { FastingSettings } from '../components/FastingSettings'
-import { BottomNav } from '../components/BottomNav'
+import { BottomNavV2 } from '../components/BottomNavV2'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { useData } from '../data/store'
 import { getTelegramUser } from '../telegram'
 import type { Screen } from '../App'
@@ -25,26 +26,36 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }
 
   return (
-    <div className="screen gap fade">
-      <div className="topbar">
-        <div className="h2">Профиль</div>
+    <div className="screen v2-screen gap fade">
+      <div className="v2-topbar">
+        {photo ? <img className="v2-avatar" src={photo} alt="" style={{ objectFit: 'cover' }} /> : <div className="v2-avatar">{initial}</div>}
+        <div style={{ flex: 1 }}>
+          <div style={{ font: '800 20px var(--v2-font-text)', letterSpacing: '-.025em' }}>{me.user.firstName ?? 'Профиль'}</div>
+          {me.user.username && <div style={{ font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>@{me.user.username}</div>}
+        </div>
       </div>
 
       <div className="scrollarea">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '2px 2px 4px' }}>
-          {photo ? <img className="avatar" src={photo} alt="" /> : <div className="avatar">{initial}</div>}
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 19 }}>{me.user.firstName ?? 'Профиль'}</div>
-            {me.user.username && <div className="muted" style={{ fontSize: 13 }}>@{me.user.username}</div>}
-          </div>
-        </div>
-
         <ProfileForm initial={formInitial} submitLabel="Сохранить" onSubmit={submit} />
 
         <FastingSettings />
+
+        <div className="v2-label" style={{ marginTop: 2 }}>Настройки</div>
+        <div className="v2-settingsrow">
+          <div className="row">
+            <MaterialIcon name="public" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <span style={{ flex: 1 }}>Часовой пояс</span>
+            <span style={{ font: '500 13px var(--v2-font-num)', color: 'var(--v2-mu)' }}>{p.timezone}</span>
+          </div>
+          <div className="row">
+            <MaterialIcon name="contrast" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <span style={{ flex: 1 }}>Тема</span>
+            <span style={{ font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Как в Telegram</span>
+          </div>
+        </div>
       </div>
 
-      <BottomNav active="profile" onNavigate={onNavigate} />
+      <BottomNavV2 active="profile" onNavigate={onNavigate} />
     </div>
   )
 }
