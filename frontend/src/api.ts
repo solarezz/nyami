@@ -2,7 +2,8 @@ import type {
   MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile, FrequentMeal,
   AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest, UpdateFastingRequest,
   Workout, WorkoutRecognition, AddWorkoutRequest, SetWeightResponse,
-  TrainingProgram, TrainingPattern,
+  TrainingProgram, TrainingPattern, Exercise, ExerciseDetail, ProgramDay,
+  TrainingSession, StartSessionRequest, RecordSetRequest,
 } from '@nyami/shared'
 
 // В проде фронт и API на одном домене → относительный путь. В dev — локальный бэкенд.
@@ -52,4 +53,11 @@ export const api = {
   coach: (message: string) => req<CoachResponse>('/api/coach', { method: 'POST', body: JSON.stringify({ message }) }),
   getTrainingPrograms: () => req<TrainingProgram[]>('/api/training/programs'),
   getTrainingPattern: () => req<TrainingPattern>('/api/training/pattern'),
+  getExercises: (muscleGroup?: string) => req<Exercise[]>(`/api/exercises${muscleGroup ? `?muscleGroup=${encodeURIComponent(muscleGroup)}` : ''}`),
+  getExercise: (id: string) => req<ExerciseDetail>(`/api/exercises/${id}`),
+  getProgramDay: (id: string) => req<ProgramDay>(`/api/training/program-days/${id}`),
+  startTrainingSession: (body: StartSessionRequest) => req<TrainingSession>('/api/training/sessions', { method: 'POST', body: JSON.stringify(body) }),
+  getTrainingSession: (id: string) => req<TrainingSession>(`/api/training/sessions/${id}`),
+  recordSet: (sessionId: string, body: RecordSetRequest) => req<TrainingSession>(`/api/training/sessions/${sessionId}/sets`, { method: 'POST', body: JSON.stringify(body) }),
+  completeTrainingSession: (sessionId: string) => req<TrainingSession>(`/api/training/sessions/${sessionId}/complete`, { method: 'POST' }),
 }

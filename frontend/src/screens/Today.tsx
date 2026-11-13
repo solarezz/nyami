@@ -8,7 +8,7 @@ import { useData, todayStr } from '../data/store'
 import { api } from '../api'
 import { haptic, showAlert, showConfirm } from '../telegram'
 import type { Screen } from '../App'
-import type { Meal, MealType, Workout, ProgramDay } from '../types'
+import type { Meal, MealType, Workout, ProgramDay, TrainingProgram } from '../types'
 
 const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 const MEAL_GROUPS: { type: MealType; label: string }[] = [
@@ -41,16 +41,42 @@ function dateLabel(iso: string): string {
   return `${d} ${MONTHS_RU[m - 1]}`
 }
 
-export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+export function Today({
+  onNavigate, onStartSession,
+}: {
+  onNavigate: (s: Screen) => void
+  onStartSession: (sessionId: string, day: ProgramDay, programName: string) => void
+}) {
   const { day, week, me, deleteMeal, updateMealItem, deleteMealItem, deleteWorkout, setWater, selectedDate, isToday, setSelectedDate, setSelectedMealType } = useData()
 
-  // Тренировка на сегодня — из программы пользователя. Пока нет экрана выбора
-  // программы (Этап 6) — берём первый день первой программы; это заметно в проде
-  // только если программы вообще есть (сейчас это так только после сид-скрипта/моков).
+  // Тренировка на сегодня — из программы пользователя. Если под сегодняшний день недели
+  // есть привязанный день программы — берём его, иначе первый день первой программы.
+  const [program, setProgram] = useState<TrainingProgram | null>(null)
   const [programDay, setProgramDay] = useState<ProgramDay | null>(null)
+  const [starting, setStarting] = useState(false)
   useEffect(() => {
-    api.getTrainingPrograms().then((programs) => setProgramDay(programs[0]?.days[0] ?? null)).catch(() => {})
+    api.getTrainingPrograms().then((programs) => {
+      const p = programs[0] ?? null
+      setProgram(p)
+      if (!p) { setProgramDay(null); return }
+      const wd = new Date().getDay() === 0 ? 7 : new Date().getDay()
+      setProgramDay(p.days.find((d) => d.weekday === wd) ?? p.days[0] ?? null)
+    }).catch(() => {})
   }, [])
+
+  const startTraining = async () => {
+    if (!program || !programDay || starting) return
+    haptic('medium')
+    setStarting(true)
+    try {
+      const session = await api.startTrainingSession({ programId: program.id, programDayId: programDay.id, name: `${program.name} · ${programDay.name}` })
+      onStartSession(session.id, programDay, program.name)
+    } catch {
+      showAlert('Не удалось начать тренировку. Попробуй ещё раз.')
+    } finally {
+      setStarting(false)
+    }
+  }
 
   if (!day) return null
   const d = day
@@ -159,8 +185,8 @@ export function Today({ onNavigate }: { onNavigate: (s: Screen) => void }) {
               <div><div className="v2-hero-stat-n num">~{estMinutes}</div><div className="v2-hero-stat-l">минут</div></div>
               <div><div className="v2-hero-stat-n num">{totalSets}</div><div className="v2-hero-stat-l">подходов</div></div>
             </div>
-            <button type="button" className="v2-btn" onClick={() => onNavigate('workout')}>
-              Начать тренировку
+            <button type="button" className="v2-btn" onClick={startTraining} disabled={starting}>
+              {starting ? 'Начинаю…' : 'Начать тренировку'}
               <span className="v2-btn-ic"><MaterialIcon name="play_arrow" /></span>
             </button>
           </div>

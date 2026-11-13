@@ -516,3 +516,43 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .v2-chip{padding:8px 14px;border-radius:8px;background:var(--v2-s2);color:var(--v2-mu);font:700 13px var(--v2-font-text);
   border:none;font-family:inherit;}
 .v2-chip.on{background:var(--v2-lime);color:var(--v2-on);}
+
+/* ---- Тренировки: таб, список упражнений, личный рекорд ---- */
+.v2-exrow{background:var(--v2-s1);border:1px solid var(--v2-ln);border-radius:12px;padding:10px;
+  display:flex;gap:10px;align-items:center;width:100%;text-align:left;font-family:inherit;color:inherit;}
+.v2-exnum{width:38px;height:38px;border-radius:8px;flex:none;background:var(--v2-s2);
+  display:flex;align-items:center;justify-content:center;font:700 15px var(--v2-font-num);color:var(--v2-mu);}
+.v2-musclebadge{padding:3px 7px;border-radius:5px;font:700 11px var(--v2-font-text);flex:none;}
+.v2-prcard{background:var(--v2-s1);border:1px solid var(--v2-ln);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;}
+.v2-pricon{width:44px;height:44px;border-radius:10px;background:var(--v2-yel);color:var(--v2-on);
+  display:flex;align-items:center;justify-content:center;flex:none;}
+
+/* ---- Тренировочная сессия ---- */
+.v2-sessiontop{height:52px;flex:none;display:flex;align-items:center;gap:10px;}
+.v2-closebtn{width:40px;height:40px;border-radius:10px;background:var(--v2-s1);border:1px solid var(--v2-ln);
+  display:flex;align-items:center;justify-content:center;flex:none;color:inherit;font-family:inherit;}
+.v2-finishbtn{height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--v2-lime);color:var(--v2-lime-ink);
+  display:flex;align-items:center;font:700 14px var(--v2-font-text);background:none;font-family:inherit;flex:none;}
+.v2-exseg{display:flex;gap:3px;}
+.v2-exseg button{flex:1;height:4px;border-radius:2px;background:var(--v2-s2);border:none;padding:0;}
+.v2-exseg button.done{background:var(--v2-lime);}
+.v2-exseg button.current{background:var(--v2-tx);}
+.v2-videoph{height:92px;border-radius:12px;border:1px solid var(--v2-ln);display:flex;align-items:center;justify-content:center;gap:8px;
+  font:500 12px var(--v2-font-text);color:var(--v2-mu);background:repeating-linear-gradient(135deg,var(--v2-s1) 0 8px,var(--v2-s2) 8px 16px);}
+.v2-setstable{background:var(--v2-s1);border:1px solid var(--v2-ln);border-radius:14px;overflow:hidden;}
+.v2-setrow{display:grid;grid-template-columns:30px 1fr 56px 46px;gap:6px;padding:8px 12px;align-items:center;border-bottom:1px solid var(--v2-ln);}
+.v2-setrow:last-child{border-bottom:none;}
+.v2-bigstepper{display:flex;flex-direction:column;gap:6px;background:var(--v2-s1);border:1px solid var(--v2-ln);border-radius:12px;padding:10px;}
+.v2-bigstepper .row{display:flex;align-items:center;justify-content:space-between;}
+.v2-resttimer{background:color-mix(in srgb, var(--v2-blu) 14%, var(--v2-s1));border:1px solid color-mix(in srgb, var(--v2-blu) 35%, transparent);
+  border-radius:14px;padding:12px;display:flex;align-items:center;gap:14px;}
+.v2-navfooter{padding:10px 0 2px;flex:none;display:flex;gap:8px;}
+.v2-navbtn{width:52px;height:52px;border-radius:10px;background:var(--v2-s1);border:1px solid var(--v2-ln);
+  display:flex;align-items:center;justify-content:center;flex:none;color:inherit;font-family:inherit;}
+.v2-navbtn:disabled{opacity:.4;}
+.v2-navnext{flex:1;height:52px;border-radius:10px;background:var(--v2-s1);border:1px solid var(--v2-ln);
+  display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;color:inherit;text-align:left;font-family:inherit;}
+.v2-navnext:disabled{opacity:.4;}
+.v2-sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:50;}
+.v2-sheet{background:var(--v2-s1);border-radius:20px 20px 0 0;padding:16px;width:100%;max-width:480px;margin:0 auto;
+  display:flex;flex-direction:column;gap:10px;max-height:70vh;overflow-y:auto;}

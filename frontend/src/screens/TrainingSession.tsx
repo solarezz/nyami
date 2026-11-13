@@ -1,0 +1,278 @@
+import { useEffect, useRef, useState } from 'react'
+import { MaterialIcon } from '../components/MaterialIcon'
+import { MuscleDiagram } from '../components/MuscleDiagram'
+import { muscleColorVars } from '../utils/muscleColor'
+import { api } from '../api'
+import { haptic, showConfirm } from '../telegram'
+import type { ExerciseDetail, ExerciseSetRecord, ProgramDay, ProgramExercise } from '../types'
+
+const REST_RADIUS = 27
+const REST_CIRC = 2 * Math.PI * REST_RADIUS
+
+function fmtClock(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+export function TrainingSession({
+  sessionId, programDay, programName, onFinish,
+}: {
+  sessionId: string
+  programDay: ProgramDay
+  programName: string
+  onFinish: () => void
+}) {
+  const [exercises, setExercises] = useState<ProgramExercise[]>(programDay.exercises)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [sets, setSets] = useState<ExerciseSetRecord[]>([])
+  const [detail, setDetail] = useState<ExerciseDetail | null>(null)
+  const [draftWeight, setDraftWeight] = useState(0)
+  const [draftReps, setDraftReps] = useState(10)
+  const [saving, setSaving] = useState(false)
+  const [restRemaining, setRestRemaining] = useState<number | null>(null)
+  const [elapsed, setElapsed] = useState(0)
+  const [showSubstitute, setShowSubstitute] = useState(false)
+  const [finishing, setFinishing] = useState(false)
+  const startedAtRef = useRef(Date.now())
+
+  const current = exercises[currentIndex]
+  const currentSets = sets.filter((s) => s.exerciseId === current.exercise.id).sort((a, b) => a.setNumber - b.setNumber)
+  const nextSetNumber = currentSets.length + 1
+
+  useEffect(() => {
+    api.getTrainingSession(sessionId).then((s) => { setSets(s.sets); startedAtRef.current = new Date(s.startedAt).getTime() }).catch(() => {})
+  }, [sessionId])
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000)), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    api.getExercise(current.exercise.id).then(setDetail).catch(() => setDetail(null))
+    setRestRemaining(null)
+  }, [current.exercise.id])
+
+  useEffect(() => {
+    if (restRemaining == null) return
+    if (restRemaining <= 0) return
+    const t = setTimeout(() => setRestRemaining((r) => (r == null ? null : r - 1)), 1000)
+    return () => clearTimeout(t)
+  }, [restRemaining])
+
+  // Черновик подхода: продолжаем с прошлого залогированного здесь же, иначе берём последний реальный результат.
+  useEffect(() => {
+    const lastHere = currentSets[currentSets.length - 1]
+    if (lastHere) {
+      setDraftWeight(lastHere.weightKg ?? 0)
+      setDraftReps(lastHere.repetitions ?? current.targetRepsMin)
+    } else if (detail?.lastPerformance) {
+      setDraftWeight(detail.lastPerformance.weightKg ?? 0)
+      setDraftReps(detail.lastPerformance.repetitions ?? current.targetRepsMin)
+    } else {
+      setDraftWeight(0)
+      setDraftReps(current.targetRepsMin)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail, currentIndex])
+
+  const logSet = async () => {
+    if (saving) return
+    haptic('medium')
+    setSaving(true)
+    try {
+      const updated = await api.recordSet(sessionId, {
+        exerciseId: current.exercise.id, setNumber: nextSetNumber, weightKg: draftWeight || undefined, repetitions: draftReps || undefined, completed: true,
+      })
+      setSets(updated.sets)
+      setRestRemaining(current.restSeconds)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const repeatLast = () => {
+    if (!detail?.lastPerformance) return
+    haptic('light')
+    setDraftWeight(detail.lastPerformance.weightKg ?? 0)
+    setDraftReps(detail.lastPerformance.repetitions ?? current.targetRepsMin)
+  }
+
+  const pickSubstitute = (ex: ExerciseDetail['substitutes'][number]) => {
+    haptic('light')
+    setExercises((prev) => prev.map((pe, i) => (i === currentIndex ? { ...pe, exercise: ex } : pe)))
+    setShowSubstitute(false)
+  }
+
+  const close = async () => {
+    if (!(await showConfirm('Выйти из тренировки? Уже записанные подходы сохранены.'))) return
+    onFinish()
+  }
+
+  const finish = async () => {
+    if (finishing) return
+    if (!(await showConfirm('Завершить тренировку?'))) return
+    haptic('medium')
+    setFinishing(true)
+    try {
+      await api.completeTrainingSession(sessionId)
+      onFinish()
+    } finally {
+      setFinishing(false)
+    }
+  }
+
+  const c = muscleColorVars(current.exercise.muscleGroup)
+  const restDash = restRemaining != null ? `${(Math.max(0, restRemaining) / current.restSeconds) * REST_CIRC} ${REST_CIRC}` : `0 ${REST_CIRC}`
+
+  return (
+    <>
+    {showSubstitute && detail && (
+      <div className="v2-sheet-backdrop" onClick={() => setShowSubstitute(false)}>
+        <div className="v2-sheet" onClick={(e) => e.stopPropagation()}>
+          <div style={{ font: '700 17px var(--v2-font-text)' }}>Чем заменить</div>
+          {detail.substitutes.filter((ex) => !exercises.some((pe) => pe.exercise.id === ex.id)).map((ex) => (
+            <button type="button" key={ex.id} className="v2-pickrow" onClick={() => pickSubstitute(ex)}>
+              <div style={{ flex: 1 }}>
+                <div className="ttl">{ex.name}</div>
+                <div className="dsc">{ex.equipment ?? ex.muscleGroup}</div>
+              </div>
+              <MaterialIcon name="chevron_right" size={20} />
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+    <div className="screen v2-screen gap fade">
+      <div className="v2-sessiontop">
+        <button type="button" className="v2-closebtn" onClick={close} aria-label="Закрыть"><MaterialIcon name="close" size={22} /></button>
+        <div style={{ flex: 1 }}>
+          <div className="v2-label">{programName} · ИДЁТ</div>
+          <div className="num" style={{ font: '700 18px var(--v2-font-num)' }}>{fmtClock(elapsed)}</div>
+        </div>
+        <button type="button" className="v2-finishbtn" onClick={finish} disabled={finishing}>{finishing ? 'Завершаю…' : 'Завершить'}</button>
+      </div>
+
+      <div className="v2-exseg">
+        {exercises.map((pe, i) => {
+          const done = sets.filter((s) => s.exerciseId === pe.exercise.id).length >= pe.targetSets
+          return <button key={pe.id} type="button" className={i === currentIndex ? 'current' : done ? 'done' : ''} onClick={() => setCurrentIndex(i)} aria-label={pe.exercise.name} />
+        })}
+      </div>
+
+      <div className="scrollarea">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span className="v2-musclebadge" style={{ background: c.bg, color: c.fg }}>{current.exercise.muscleGroup}</span>
+            <span className="num" style={{ font: '600 13px var(--v2-font-num)', color: 'var(--v2-mu)' }}>УПРАЖНЕНИЕ {currentIndex + 1} / {exercises.length} · {current.targetSets}×{current.targetRepsMin}–{current.targetRepsMax}</span>
+          </div>
+          <div className="v2-h1">{current.exercise.name}</div>
+        </div>
+
+        <div className="v2-videoph"><MaterialIcon name="play_circle" size={20} />{current.exercise.techniqueVideoUrl ? 'видео техники упражнения' : 'видео техники пока не добавлено'}</div>
+
+        {current.exercise.equipment && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>
+            <MaterialIcon name="fitness_center" size={16} />Оборудование: {current.exercise.equipment}
+          </div>
+        )}
+
+        {detail && (detail.primaryMuscles.length > 0 || detail.secondaryMuscles.length > 0) && (
+          <div className="v2-card">
+            <MuscleDiagram primaryMuscles={detail.primaryMuscles} secondaryMuscles={detail.secondaryMuscles} />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
+              {detail.primaryMuscles.map((m) => <span key={m} className="v2-musclebadge" style={{ background: 'var(--v2-lime)', color: 'var(--v2-on)' }}>{m}</span>)}
+              {detail.secondaryMuscles.map((m) => <span key={m} className="v2-musclebadge" style={{ background: 'var(--v2-s2)', color: 'var(--v2-mu)' }}>{m}</span>)}
+            </div>
+          </div>
+        )}
+
+        {detail && detail.substitutes.filter((ex) => !exercises.some((pe) => pe.exercise.id === ex.id)).length > 0 && (
+          <button type="button" className="v2-pickrow" onClick={() => setShowSubstitute(true)} style={{ justifyContent: 'center', gap: 8 }}>
+            <MaterialIcon name="sync_alt" size={18} />Заменить упражнение
+          </button>
+        )}
+
+        <div className="v2-setstable">
+          <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 56px 46px', gap: 6, padding: '8px 12px', font: '600 10px var(--v2-font-num)', letterSpacing: '.08em', color: 'var(--v2-mu)', borderBottom: '1px solid var(--v2-ln)' }}>
+            <span>#</span><span>ПОДХОД</span><span>КГ</span><span>ПОВТ</span>
+          </div>
+          {currentSets.length === 0 ? (
+            <div style={{ padding: '14px 12px', font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Пока нет записанных подходов</div>
+          ) : currentSets.map((s) => (
+            <div key={s.id} className="v2-setrow">
+              <span className="num" style={{ font: '700 14px var(--v2-font-num)', color: 'var(--v2-mu)' }}>{s.setNumber}</span>
+              <span className="msi" style={{ color: 'var(--v2-lime-ink)', fontSize: 18 }}>check</span>
+              <span className="num" style={{ font: '700 16px var(--v2-font-num)' }}>{s.weightKg ?? '—'}</span>
+              <span className="num" style={{ font: '700 16px var(--v2-font-num)' }}>{s.repetitions ?? '—'}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="v2-bigstepper">
+          <div className="v2-label">Подход {nextSetNumber}</div>
+          <div className="row">
+            <span style={{ font: '600 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Вес, кг</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button type="button" className="v2-stepbtn" onClick={() => setDraftWeight((w) => Math.max(0, w - 2.5))}><MaterialIcon name="remove" size={18} /></button>
+              <span className="num" style={{ font: '700 24px var(--v2-font-num)', minWidth: 54, textAlign: 'center' }}>{draftWeight}</span>
+              <button type="button" className="v2-stepbtn" onClick={() => setDraftWeight((w) => w + 2.5)}><MaterialIcon name="add" size={18} /></button>
+            </div>
+          </div>
+          <div className="row">
+            <span style={{ font: '600 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Повторения</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button type="button" className="v2-stepbtn" onClick={() => setDraftReps((r) => Math.max(0, r - 1))}><MaterialIcon name="remove" size={18} /></button>
+              <span className="num" style={{ font: '700 24px var(--v2-font-num)', minWidth: 54, textAlign: 'center' }}>{draftReps}</span>
+              <button type="button" className="v2-stepbtn" onClick={() => setDraftReps((r) => r + 1)}><MaterialIcon name="add" size={18} /></button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+            {detail?.lastPerformance && currentSets.length === 0 && (
+              <button type="button" className="v2-pickrow" style={{ flex: 1, justifyContent: 'center', gap: 6, padding: '12px' }} onClick={repeatLast}>
+                <MaterialIcon name="replay" size={18} />Как в прошлый раз
+              </button>
+            )}
+            <button type="button" className="v2-btn" style={{ flex: 1.2, height: 50 }} onClick={logSet} disabled={saving}>
+              {saving ? 'Записываю…' : 'Записать подход'}
+              <span className="v2-btn-ic" style={{ width: 32, height: 32 }}><MaterialIcon name="check" size={18} /></span>
+            </button>
+          </div>
+        </div>
+
+        {restRemaining != null && (
+          <div className="v2-resttimer">
+            <div style={{ position: 'relative', width: 64, height: 64, flex: 'none' }}>
+              <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="32" cy="32" r={REST_RADIUS} fill="none" stroke="var(--v2-s2)" strokeWidth="6" />
+                <circle cx="32" cy="32" r={REST_RADIUS} fill="none" stroke="var(--v2-blu)" strokeWidth="6" strokeDasharray={restDash} />
+              </svg>
+              <span className="msi" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: 'var(--v2-blu)' }}>timer</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: '600 11px var(--v2-font-num)', letterSpacing: '.08em', color: 'var(--v2-blu-ink)' }}>ОТДЫХ</div>
+              <div className="num" style={{ font: '700 34px/1 var(--v2-font-num)', letterSpacing: '-.03em', marginTop: 2 }}>{fmtClock(Math.max(0, restRemaining))}</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <button type="button" className="v2-chip" onClick={() => setRestRemaining((r) => (r ?? 0) + 15)}>+15 с</button>
+              <button type="button" className="v2-chip" onClick={() => setRestRemaining(null)}>Пропустить</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="v2-navfooter">
+        <button type="button" className="v2-navbtn" disabled={currentIndex === 0} onClick={() => setCurrentIndex((i) => i - 1)}><MaterialIcon name="chevron_left" size={24} /></button>
+        <button type="button" className="v2-navnext" disabled={currentIndex === exercises.length - 1} onClick={() => setCurrentIndex((i) => i + 1)}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="v2-label">Следующее</div>
+            <div style={{ font: '600 14px var(--v2-font-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exercises[currentIndex + 1]?.exercise.name ?? '—'}</div>
+          </div>
+          <MaterialIcon name="chevron_right" size={24} />
+        </button>
+      </div>
+    </div>
+    </>
+  )
+}

@@ -42,6 +42,11 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
         <div className="v2-label" style={{ marginTop: 2 }}>Настройки</div>
         <div className="v2-settingsrow">
+          <button type="button" className="row" style={{ width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }} onClick={() => onNavigate('coach')}>
+            <MaterialIcon name="forum" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <span style={{ flex: 1 }}>Коуч</span>
+            <MaterialIcon name="chevron_right" size={20} style={{ color: 'var(--v2-mu)' }} />
+          </button>
           <div className="row">
             <MaterialIcon name="public" size={20} style={{ color: 'var(--v2-mu)' }} />
             <span style={{ flex: 1 }}>Часовой пояс</span>

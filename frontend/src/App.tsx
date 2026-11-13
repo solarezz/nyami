@@ -13,8 +13,11 @@ import { Result } from './screens/Result'
 import { Coach } from './screens/Coach'
 import { Progress } from './screens/Progress'
 import { Profile } from './screens/Profile'
+import { Training } from './screens/Training'
+import { TrainingSession } from './screens/TrainingSession'
+import type { ProgramDay } from './types'
 
-export type Screen = 'onboarding' | 'today' | 'add' | 'workout' | 'result' | 'coach' | 'progress' | 'profile'
+export type Screen = 'onboarding' | 'today' | 'add' | 'workout' | 'result' | 'coach' | 'progress' | 'profile' | 'training' | 'session'
 
 export function App() {
   return (
@@ -51,11 +54,25 @@ function ErrorScreen({ onRetry }: { onRetry: () => void }) {
 }
 
 // Куда ведёт нативная кнопка «Назад» с каждого экрана (undefined = кнопки нет).
-const BACK_TO: Partial<Record<Screen, Screen>> = { add: 'today', workout: 'today', result: 'add', coach: 'today' }
+const BACK_TO: Partial<Record<Screen, Screen>> = { add: 'today', workout: 'today', result: 'add', coach: 'profile' }
+
+interface ActiveSession { sessionId: string; day: ProgramDay; programName: string }
 
 function Router({ startOnboarding }: { startOnboarding: boolean }) {
   // Новый пользователь начинает с онбординга, остальные — с «Сегодня».
   const [screen, setScreen] = useState<Screen>(startOnboarding ? 'onboarding' : 'today')
+  // Активная тренировочная сессия живёт здесь (не в глобальном сторе — нужна только
+  // для моста между «Тренировки»/«Сегодня» и экраном сессии).
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
+
+  const startSession = (sessionId: string, day: ProgramDay, programName: string) => {
+    setActiveSession({ sessionId, day, programName })
+    setScreen('session')
+  }
+  const finishSession = () => {
+    setActiveSession(null)
+    setScreen('training')
+  }
 
   useEffect(() => {
     const target = BACK_TO[screen]
@@ -65,13 +82,17 @@ function Router({ startOnboarding }: { startOnboarding: boolean }) {
   return (
     <>
       {screen === 'onboarding' && <Onboarding onNavigate={setScreen} />}
-      {screen === 'today' && <Today onNavigate={setScreen} />}
+      {screen === 'today' && <Today onNavigate={setScreen} onStartSession={startSession} />}
       {screen === 'add' && <AddFood onNavigate={setScreen} />}
       {screen === 'workout' && <AddWorkout onNavigate={setScreen} />}
       {screen === 'result' && <Result onNavigate={setScreen} />}
       {screen === 'coach' && <Coach onNavigate={setScreen} />}
       {screen === 'progress' && <Progress onNavigate={setScreen} />}
       {screen === 'profile' && <Profile onNavigate={setScreen} />}
+      {screen === 'training' && <Training onNavigate={setScreen} onStartSession={startSession} />}
+      {screen === 'session' && activeSession && (
+        <TrainingSession sessionId={activeSession.sessionId} programDay={activeSession.day} programName={activeSession.programName} onFinish={finishSession} />
+      )}
     </>
   )
 }
