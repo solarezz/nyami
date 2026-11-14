@@ -19,6 +19,7 @@ export const users = pgTable('users', {
   fastingProtocol: text('fasting_protocol').notNull().default('off'),
   eatStartHour: integer('eat_start_hour').notNull().default(12),
   timezone: text('timezone').notNull().default('Europe/Moscow'),
+  remindersEnabled: boolean('reminders_enabled').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

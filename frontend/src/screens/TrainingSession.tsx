@@ -170,7 +170,15 @@ export function TrainingSession({
           <div className="v2-h1">{current.exercise.name}</div>
         </div>
 
-        <div className="v2-videoph"><MaterialIcon name="play_circle" size={20} />{current.exercise.techniqueVideoUrl ? 'видео техники упражнения' : 'видео техники пока не добавлено'}</div>
+        {current.exercise.techniqueVideoUrl ? (
+          /\.(mp4|webm|mov)(\?|$)/i.test(current.exercise.techniqueVideoUrl) ? (
+            <video key={current.exercise.id} className="v2-videoph" src={current.exercise.techniqueVideoUrl} controls playsInline style={{ width: '100%', background: 'var(--v2-s2)', objectFit: 'cover' }} />
+          ) : (
+            <img key={current.exercise.id} className="v2-videoph" src={current.exercise.techniqueVideoUrl} alt={`Техника: ${current.exercise.name}`} style={{ width: '100%', objectFit: 'cover' }} />
+          )
+        ) : (
+          <div className="v2-videoph"><MaterialIcon name="play_circle" size={20} />видео техники пока не добавлено</div>
+        )}
 
         {current.exercise.equipment && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>

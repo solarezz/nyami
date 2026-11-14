@@ -1,6 +1,6 @@
 import type {
   DaySummary, Profile, WeekDay, Meal, MealItem, AddMealRequest, UpdateProfileRequest, FrequentMeal, MealType, UpdateFastingRequest,
-  Workout, AddWorkoutRequest,
+  Workout, AddWorkoutRequest, UpdateNotificationsRequest,
 } from '@nyami/shared'
 import { computeNorm } from './nutrition.js'
 import { localDateKey, addDaysToDateStr, localHour, formatHHMM, zonedTimeToUtc, DEFAULT_TIMEZONE } from './tz.js'
@@ -64,6 +64,7 @@ export interface NyamiRepo {
   isOnboarded(userId: number): Promise<boolean>
   updateProfile(userId: number, req: UpdateProfileRequest): Promise<Profile>
   setFasting(userId: number, req: UpdateFastingRequest): Promise<Profile>
+  setNotifications(userId: number, req: UpdateNotificationsRequest): Promise<Profile>
   /** Сводка за конкретный день (date = YYYY-MM-DD, локальная дата пользователя). Без даты — сегодня. */
   getDay(userId: number, date?: string): Promise<DaySummary>
   getWeek(userId: number): Promise<{ days: WeekDay[]; weightSeries: number[] }>
@@ -119,6 +120,7 @@ const defaultProfile: Profile = {
   dailyKcal: 1900, protein: 140, fat: 60, carbs: 190,
   fastingProtocol: 'off', eatStartHour: 12,
   timezone: DEFAULT_TIMEZONE,
+  remindersEnabled: true,
 }
 
 type StoredMeal = Meal & { eatenAt: string }
@@ -183,6 +185,12 @@ export function createMockRepo(): NyamiRepo {
 
     async setFasting(u, req) {
       const p: Profile = { ...getProfileFor(u), fastingProtocol: req.protocol, eatStartHour: req.eatStartHour }
+      profiles.set(u, p)
+      return p
+    },
+
+    async setNotifications(u, req) {
+      const p: Profile = { ...getProfileFor(u), remindersEnabled: req.remindersEnabled }
       profiles.set(u, p)
       return p
     },

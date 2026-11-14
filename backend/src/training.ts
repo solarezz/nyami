@@ -1,8 +1,29 @@
 import type {
   Exercise, ExerciseDetail, TrainingProgram, ProgramDay, TrainingSession, ExerciseSetRecord,
-  StartSessionRequest, RecordSetRequest, TrainingPattern,
+  StartSessionRequest, RecordSetRequest, TrainingPattern, TrainingStats,
 } from '@nyami/shared'
 import { localIsoWeekday, localHour } from './tz.js'
+
+// Результат генерации программы (ИИ или детерминированный мок) — пока не сохранён
+// в БД, поэтому id'шников дней/упражнений-в-программе ещё нет, только ссылки на
+// реальные exerciseId из библиотеки.
+export interface GeneratedProgramExercise {
+  exerciseId: string
+  targetSets: number
+  targetRepsMin: number
+  targetRepsMax: number
+  restSeconds: number
+}
+export interface GeneratedProgramDay {
+  name: string
+  weekday: number | null
+  exercises: GeneratedProgramExercise[]
+}
+export interface GeneratedProgramPlan {
+  name: string
+  description: string | null
+  days: GeneratedProgramDay[]
+}
 
 // Абстракция хранилища тренировочного модуля — отдельно от NyamiRepo (nutrition/profile),
 // т.к. это самостоятельный домен (библиотека упражнений, программы, сессии).
@@ -11,12 +32,16 @@ export interface TrainingRepo {
   getExercise(userId: number, exerciseId: string): Promise<ExerciseDetail | null>
   listPrograms(userId: number): Promise<TrainingProgram[]>
   getProgramDay(programDayId: string): Promise<ProgramDay | null>
+  /** Сохраняет сгенерированную программу как личную программу пользователя. */
+  createProgram(userId: number, plan: GeneratedProgramPlan): Promise<TrainingProgram>
   startSession(userId: number, req: StartSessionRequest): Promise<TrainingSession>
   recordSet(userId: number, sessionId: string, req: RecordSetRequest): Promise<TrainingSession>
   completeSession(userId: number, sessionId: string): Promise<TrainingSession>
   getSession(userId: number, sessionId: string): Promise<TrainingSession | null>
   /** Личный паттерн по фактической истории (не настраивается вручную) — дни недели + время суток. */
   inferTrainingPattern(userId: number, timeZone: string): Promise<TrainingPattern>
+  /** Агрегаты по тренировкам за последние `days` дней — для экрана «Прогресс». */
+  getTrainingStats(userId: number, days: number): Promise<TrainingStats>
 }
 
 /** Доверяем личному паттерну, только если тренировок заметно больше, чем похожих на случайные. */
@@ -59,12 +84,15 @@ const MOCK_SUBSTITUTES: Record<string, string[]> = {
 
 export function createMockTrainingRepo(): TrainingRepo {
   const sessionsByUser = new Map<number, Map<string, TrainingSession>>()
+  const programsByUser = new Map<number, TrainingProgram[]>()
   let sessionSeq = 0
+  let programSeq = 0
 
   const userSessions = (userId: number): Map<string, TrainingSession> => {
     if (!sessionsByUser.has(userId)) sessionsByUser.set(userId, new Map())
     return sessionsByUser.get(userId)!
   }
+  const userPrograms = (userId: number): TrainingProgram[] => programsByUser.get(userId) ?? []
 
   const defaultProgram: TrainingProgram = {
     id: 'p-ppl',
@@ -112,12 +140,47 @@ export function createMockTrainingRepo(): TrainingRepo {
       return { ...ex, lastPerformance, personalRecord, substitutes }
     },
 
-    async listPrograms() {
-      return [defaultProgram]
+    async listPrograms(userId) {
+      // Личные программы (новее — выше) идут перед общим шаблоном.
+      return [...userPrograms(userId), defaultProgram]
     },
 
     async getProgramDay(programDayId) {
+      for (const programs of programsByUser.values()) {
+        for (const p of programs) {
+          const d = p.days.find((day) => day.id === programDayId)
+          if (d) return d
+        }
+      }
       return defaultProgram.days.find((d) => d.id === programDayId) ?? null
+    },
+
+    async createProgram(userId, plan) {
+      const exerciseById = new Map(MOCK_EXERCISES.map((e) => [e.id, e]))
+      const programId = `pg${Date.now()}${programSeq++}`
+      const program: TrainingProgram = {
+        id: programId,
+        name: plan.name,
+        description: plan.description,
+        isTemplate: false,
+        days: plan.days.map((d, di) => ({
+          id: `${programId}-d${di}`,
+          name: d.name,
+          weekday: d.weekday,
+          exercises: d.exercises
+            .filter((e) => exerciseById.has(e.exerciseId))
+            .map((e, ei) => ({
+              id: `${programId}-d${di}-e${ei}`,
+              exercise: exerciseById.get(e.exerciseId)!,
+              targetSets: e.targetSets,
+              targetRepsMin: e.targetRepsMin,
+              targetRepsMax: e.targetRepsMax,
+              restSeconds: e.restSeconds,
+            })),
+        })).filter((d) => d.exercises.length > 0),
+      }
+      programsByUser.set(userId, [program, ...userPrograms(userId)])
+      return program
     },
 
     async startSession(userId, req) {
@@ -160,5 +223,25 @@ export function createMockTrainingRepo(): TrainingRepo {
       const started = [...userSessions(userId).values()].filter((s) => s.status === 'completed').map((s) => new Date(s.startedAt))
       return computeTrainingPattern(started, timeZone)
     },
+
+    async getTrainingStats(userId, days) {
+      const since = Date.now() - days * 24 * 60 * 60 * 1000
+      const sessions = [...userSessions(userId).values()].filter((s) => s.status === 'completed' && new Date(s.startedAt).getTime() >= since)
+      return computeTrainingStats(sessions)
+    },
   }
+}
+
+/** Общая логика агрегации статистики — переиспользуется мок- и Postgres-репо. */
+export function computeTrainingStats(sessions: TrainingSession[]): TrainingStats {
+  let completedSets = 0
+  let totalVolumeKg = 0
+  let totalMinutes = 0
+  for (const s of sessions) {
+    const completed = s.sets.filter((set) => set.completed)
+    completedSets += completed.length
+    totalVolumeKg += completed.reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.repetitions ?? 0), 0)
+    if (s.completedAt) totalMinutes += Math.max(0, Math.round((new Date(s.completedAt).getTime() - new Date(s.startedAt).getTime()) / 60000))
+  }
+  return { sessionsCount: sessions.length, completedSets, totalVolumeKg: Math.round(totalVolumeKg), totalMinutes }
 }

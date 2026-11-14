@@ -67,6 +67,7 @@ async function mealThreshold(repo: NyamiRepo, userId: number, type: MealType, ti
 /** Проверяет одного пользователя; при необходимости шлёт одно напоминание. Возвращает тип отправленного или null. */
 export async function checkMealReminders(repo: NyamiRepo, userId: number): Promise<MealType | null> {
   const profile = await repo.getProfile(userId)
+  if (!profile.remindersEnabled) return null
   const timeZone = profile.timezone
   const nowMin = localMinutesOfDay(new Date(), timeZone)
   const date = localDateKey(new Date(), timeZone)
@@ -105,6 +106,8 @@ async function runMealReminders(repo: NyamiRepo): Promise<void> {
 
 /** Недельный отчёт по данным пользователя. */
 export async function runWeeklyFor(repo: NyamiRepo, userId: number): Promise<void> {
+  const profile = await repo.getProfile(userId)
+  if (!profile.remindersEnabled) return
   const [week, day] = await Promise.all([repo.getWeek(userId), repo.getDay(userId)])
   const logged = week.days.filter((d) => d.kcal > 0)
   if (logged.length === 0) return // нечего показывать

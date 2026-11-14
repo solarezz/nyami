@@ -80,6 +80,16 @@ export function createDrizzleRepo(): NyamiRepo {
       return toProfile(updated[0])
     },
 
+    async setNotifications(userId, req) {
+      await ensureUser(userId)
+      const updated = await database
+        .update(users)
+        .set({ remindersEnabled: req.remindersEnabled })
+        .where(eq(users.telegramId, userId))
+        .returning()
+      return toProfile(updated[0])
+    },
+
     async getDay(userId, date) {
       const u = await ensureUser(userId)
       const resolvedDate = date ?? localDateKey(new Date(), u.timezone)
@@ -327,5 +337,6 @@ function toProfile(u: typeof users.$inferSelect): Profile {
     fastingProtocol: u.fastingProtocol as FastingProtocol,
     eatStartHour: u.eatStartHour,
     timezone: u.timezone,
+    remindersEnabled: u.remindersEnabled,
   }
 }
