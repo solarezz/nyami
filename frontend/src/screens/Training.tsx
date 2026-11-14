@@ -67,6 +67,9 @@ export function Training({
           <div className="v2-card" style={{ textAlign: 'center', color: 'var(--v2-mu)', padding: '32px 16px' }}>
             Пока нет программы тренировок.
           </div>
+          <button type="button" className="v2-pickrow" style={{ justifyContent: 'center', gap: 8 }} onClick={() => onNavigate('workout')}>
+            <MaterialIcon name="directions_run" size={18} />Записать активность вручную
+          </button>
         </div>
         <BottomNavV2 active="training" onNavigate={onNavigate} />
       </div>
@@ -180,6 +183,10 @@ export function Training({
             </div>
           </div>
         )}
+
+        <button type="button" className="v2-pickrow" style={{ justifyContent: 'center', gap: 8 }} onClick={() => onNavigate('workout')}>
+          <MaterialIcon name="directions_run" size={18} />Другая активность (бег, ходьба…)
+        </button>
       </div>
 
       <BottomNavV2 active="training" onNavigate={onNavigate} />
