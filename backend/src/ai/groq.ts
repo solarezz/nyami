@@ -1,6 +1,7 @@
-import type { Recognition, DaySummary, RecognizeRequest, WorkoutRecognition } from '@nyami/shared'
+import type { Recognition, DaySummary, RecognizeRequest, WorkoutRecognition, Profile, Exercise, TrainingPattern } from '@nyami/shared'
 import { config } from '../config.js'
 import { offLookup } from './off.js'
+import type { GeneratedProgramPlan } from '../training.js'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -269,4 +270,92 @@ export async function groqCoach(day: DaySummary, message: string): Promise<strin
   )
   // Страховка на случай, если reasoning_format не полностью скрыл цепочку рассуждений.
   return reply.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+}
+
+const ACTIVITY_LABEL: Record<Profile['activity'], string> = { low: 'низкая (сидячий образ жизни)', medium: 'средняя (лёгкая активность)', high: 'высокая (регулярные тренировки/физический труд)' }
+const GOAL_LABEL: Record<Profile['goal'], string> = { lose: 'похудение', maintain: 'поддержание формы', gain: 'набор мышечной массы' }
+
+const PROGRAM_SYSTEM = `Ты — опытный фитнес-тренер. Составь персональную программу тренировок в зале под профиль пользователя,
+используя ТОЛЬКО упражнения из предложенного списка (указывай exerciseId ровно как в списке, ничего не выдумывай).
+
+ПРАВИЛА:
+- Подбери количество тренировочных дней в неделю (2–5) исходя из уровня активности и цели.
+- Распредели группы мышц по дням разумно (напр. Push/Pull/Legs, Верх/Низ, Full Body — выбери сам, что уместнее
+  при таком числе дней и доступных упражнениях), не повторяй одно упражнение дважды в одной программе.
+- На день — 4–7 упражнений.
+- targetSets 3–5, targetRepsMin/targetRepsMax — диапазон реалистичный для цели (похудение/рельеф — выше повторы,
+  12–15; набор массы — 6–10; поддержание — 8–12). restSeconds 60–150 (тяжёлые базовые — больше отдыха).
+- Если известны типичные дни тренировок пользователя (ниже) — используй именно эти weekday (1=пн..7=вс) для дней
+  программы, по одному дню программы на каждый typicalWeekday, в том же порядке. Если типичных дней нет или их
+  меньше, чем нужно дней в программе — ставь weekday: null (пользователь сам выберет день).
+
+Отвечай СТРОГО валидным JSON без пояснений:
+{
+  "name": "короткое название программы по-русски",
+  "description": "1 короткое предложение, что это за программа и почему она подходит",
+  "days": [
+    { "name": "День 1 · <фокус>", "weekday": число|null, "exercises": [
+      { "exerciseId": "<id из списка>", "targetSets": число, "targetRepsMin": число, "targetRepsMax": число, "restSeconds": число }
+    ] }
+  ]
+}`
+
+interface RawProgramExercise { exerciseId?: unknown; targetSets?: unknown; targetRepsMin?: unknown; targetRepsMax?: unknown; restSeconds?: unknown }
+interface RawProgramDay { name?: unknown; weekday?: unknown; exercises?: unknown }
+interface RawProgram { name?: unknown; description?: unknown; days?: unknown }
+
+export async function groqGenerateProgram(profile: Profile, library: Exercise[], pattern: TrainingPattern): Promise<GeneratedProgramPlan> {
+  const exerciseLines = library.map((e) => `${e.id} | ${e.name} | группа: ${e.muscleGroup} | оборудование: ${e.equipment ?? '—'} | сложность: ${e.difficulty}`).join('\n')
+  const patternLine = pattern.sampleSize >= 3 && pattern.typicalWeekdays.length > 0
+    ? `Типичные дни тренировок пользователя (1=пн..7=вс): ${pattern.typicalWeekdays.join(', ')}.`
+    : 'Личной истории тренировок пока нет — распредели дни сам.'
+
+  const userMsg = `Профиль: пол ${profile.sex === 'male' ? 'мужской' : 'женский'}, возраст ${profile.age}, рост ${profile.heightCm} см, вес ${profile.weightKg} кг,
+активность: ${ACTIVITY_LABEL[profile.activity]}, цель: ${GOAL_LABEL[profile.goal]}.
+${patternLine}
+
+Доступные упражнения (id | название | группа мышц | оборудование | сложность):
+${exerciseLines}`
+
+  const validIds = new Set(library.map((e) => e.id))
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const raw = await groqChat(
+        [
+          { role: 'system', content: PROGRAM_SYSTEM },
+          { role: 'user', content: userMsg },
+        ],
+        config.groqTextModel,
+        { jsonMode: true, reasoningFormat: 'hidden' },
+      )
+      const clean = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+      const start = clean.indexOf('{')
+      const end = clean.lastIndexOf('}')
+      const json = start >= 0 && end > start ? clean.slice(start, end + 1) : clean
+      const p = JSON.parse(json) as RawProgram
+
+      const days = (Array.isArray(p.days) ? p.days as RawProgramDay[] : [])
+        .map((d): GeneratedProgramPlan['days'][number] => ({
+          name: String(d.name ?? 'День'),
+          weekday: Number.isInteger(d.weekday) && (d.weekday as number) >= 1 && (d.weekday as number) <= 7 ? (d.weekday as number) : null,
+          exercises: (Array.isArray(d.exercises) ? d.exercises as RawProgramExercise[] : [])
+            .filter((e) => typeof e.exerciseId === 'string' && validIds.has(e.exerciseId))
+            .map((e) => ({
+              exerciseId: e.exerciseId as string,
+              targetSets: Math.min(6, Math.max(1, Math.round(num(e.targetSets, 3)))),
+              targetRepsMin: Math.min(30, Math.max(1, Math.round(num(e.targetRepsMin, 8)))),
+              targetRepsMax: Math.min(30, Math.max(1, Math.round(num(e.targetRepsMax, 12)))),
+              restSeconds: Math.min(300, Math.max(15, Math.round(num(e.restSeconds, 90)))),
+            })),
+        }))
+        .filter((d) => d.exercises.length > 0)
+
+      if (days.length === 0) throw new Error('empty_program')
+      return { name: String(p.name ?? 'Моя программа'), description: typeof p.description === 'string' ? p.description : null, days }
+    } catch (e) {
+      lastErr = e
+    }
+  }
+  throw new Error(`не удалось сгенерировать программу: ${lastErr instanceof Error ? lastErr.message : lastErr}`)
 }

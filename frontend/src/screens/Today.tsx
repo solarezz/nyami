@@ -4,9 +4,11 @@ import { MacroDonut } from '../components/MacroDonut'
 import { NumberField } from '../components/NumberField'
 import { FastingCard } from '../components/FastingCard'
 import { BottomNavV2 } from '../components/BottomNavV2'
+import { Avatar } from '../components/Avatar'
+import { AiOverlay } from '../components/AiOverlay'
 import { useData, todayStr } from '../data/store'
 import { api } from '../api'
-import { haptic, showAlert, showConfirm } from '../telegram'
+import { haptic, showAlert, showConfirm, getTelegramUser } from '../telegram'
 import type { Screen } from '../App'
 import type { Meal, MealType, Workout, ProgramDay, TrainingProgram } from '../types'
 
@@ -54,14 +56,17 @@ export function Today({
   const [program, setProgram] = useState<TrainingProgram | null>(null)
   const [programDay, setProgramDay] = useState<ProgramDay | null>(null)
   const [starting, setStarting] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  const applyProgram = (p: TrainingProgram | null) => {
+    setProgram(p)
+    if (!p) { setProgramDay(null); return }
+    const wd = new Date().getDay() === 0 ? 7 : new Date().getDay()
+    setProgramDay(p.days.find((d) => d.weekday === wd) ?? p.days[0] ?? null)
+  }
+
   useEffect(() => {
-    api.getTrainingPrograms().then((programs) => {
-      const p = programs[0] ?? null
-      setProgram(p)
-      if (!p) { setProgramDay(null); return }
-      const wd = new Date().getDay() === 0 ? 7 : new Date().getDay()
-      setProgramDay(p.days.find((d) => d.weekday === wd) ?? p.days[0] ?? null)
-    }).catch(() => {})
+    api.getTrainingPrograms().then((programs) => applyProgram(programs[0] ?? null)).catch(() => {})
   }, [])
 
   const startTraining = async () => {
@@ -75,6 +80,19 @@ export function Today({
       showAlert('Не удалось начать тренировку. Попробуй ещё раз.')
     } finally {
       setStarting(false)
+    }
+  }
+
+  const generateProgram = async () => {
+    if (generating) return
+    haptic('medium')
+    setGenerating(true)
+    try {
+      applyProgram(await api.generateTrainingProgram())
+    } catch {
+      showAlert('Не удалось создать программу. Попробуй ещё раз.')
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -141,8 +159,9 @@ export function Today({
 
   return (
     <div className="screen v2-screen gap fade">
+      {generating && <AiOverlay text="Создаю программу тренировок…" />}
       <div className="v2-topbar">
-        <div className="v2-avatar">{(me?.user.firstName ?? 'Н').slice(0, 1).toUpperCase()}</div>
+        <Avatar photoUrl={getTelegramUser()?.photo_url} name={me?.user.firstName ?? 'Н'} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--v2-mu)' }}>{dateLabel(todayStr())}</div>
           <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.01em' }}>Привет, {me?.user.firstName ?? 'друг'}</div>
@@ -185,7 +204,7 @@ export function Today({
               <div><div className="v2-hero-stat-n num">~{estMinutes}</div><div className="v2-hero-stat-l">минут</div></div>
               <div><div className="v2-hero-stat-n num">{totalSets}</div><div className="v2-hero-stat-l">подходов</div></div>
             </div>
-            <button type="button" className="v2-btn" onClick={startTraining} disabled={starting}>
+            <button type="button" className="v2-btn on-dark" onClick={startTraining} disabled={starting}>
               {starting ? 'Начинаю…' : 'Начать тренировку'}
               <span className="v2-btn-ic"><MaterialIcon name="play_arrow" /></span>
             </button>
@@ -193,11 +212,14 @@ export function Today({
         ) : (
           <div className="v2-hero" style={{ alignItems: 'flex-start' }}>
             <span className="msi v2-hero-watermark" style={{ fontSize: 140, right: -20, top: -24, transform: 'rotate(-20deg)' }}>fitness_center</span>
-            <div style={{ fontSize: 20, fontWeight: 800, position: 'relative' }}>Добавь тренировку</div>
-            <div style={{ fontSize: 13, fontWeight: 600, opacity: .75, position: 'relative' }}>Программ пока нет — отметь вручную</div>
-            <button type="button" className="v2-btn" onClick={() => onNavigate('workout')}>
-              Добавить тренировку
-              <span className="v2-btn-ic"><MaterialIcon name="add" /></span>
+            <div style={{ fontSize: 20, fontWeight: 800, position: 'relative' }}>Нет программы тренировок</div>
+            <div style={{ fontSize: 13, fontWeight: 600, opacity: .75, position: 'relative' }}>ИИ составит её под твою цель и уровень активности</div>
+            <button type="button" className="v2-btn on-dark" onClick={generateProgram} disabled={generating}>
+              {generating ? 'Создаю программу…' : 'Создать программу с ИИ'}
+              <span className="v2-btn-ic">{generating ? <MaterialIcon name="hourglass_top" /> : <MaterialIcon name="auto_awesome" />}</span>
+            </button>
+            <button type="button" style={{ position: 'relative', background: 'none', border: 'none', font: '600 12px var(--v2-font-text)', opacity: .75, textDecoration: 'underline', padding: 0, cursor: 'pointer' }} onClick={() => onNavigate('workout')}>
+              или отметить активность вручную
             </button>
           </div>
         ))}

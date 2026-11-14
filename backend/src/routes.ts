@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type {
   MeResponse, AddMealRequest, RecognizeRequest, CoachRequest, CoachResponse, UpdateProfileRequest, Recognition, UpdateFastingRequest,
   AddWorkoutRequest, RecognizeWorkoutRequest, SetWeightRequest, UpdateMealItemRequest,
-  StartSessionRequest, RecordSetRequest,
+  StartSessionRequest, RecordSetRequest, UpdateNotificationsRequest,
 } from '@nyami/shared'
 import { authHook } from './auth.js'
 import { type NyamiRepo, LastItemError } from './repo.js'
@@ -10,6 +10,9 @@ import type { TrainingRepo } from './training.js'
 import { getAi } from './ai/index.js'
 import { offByBarcode } from './ai/off.js'
 import { fatsecretByBarcode } from './ai/fatsecret.js'
+import { groqGenerateProgram } from './ai/groq.js'
+import { mockGenerateProgram } from './ai/mock.js'
+import { config } from './config.js'
 
 // Явная дата YYYY-MM-DD из запроса, иначе undefined — репозиторий сам подставит
 // «сегодня» по локальной таймзоне пользователя (она есть только после ensureUser).
@@ -34,6 +37,9 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo, training: 
 
     // Интервальное голодание: протокол + час начала окна еды.
     api.post<{ Body: UpdateFastingRequest }>('/api/fasting', async (req) => repo.setFasting(req.user.id, req.body))
+
+    // Напоминания в Telegram (приёмы пищи, еженедельный отчёт) — вкл/выкл.
+    api.post<{ Body: UpdateNotificationsRequest }>('/api/notifications', async (req) => repo.setNotifications(req.user.id, req.body))
 
     api.get<{ Querystring: { date?: string } }>('/api/day', async (req) => repo.getDay(req.user.id, dayParam(req.query.date)))
 
@@ -150,6 +156,29 @@ export function registerRoutes(app: FastifyInstance, repo: NyamiRepo, training: 
     })
 
     api.get('/api/training/programs', async (req) => training.listPrograms(req.user.id))
+
+    // ИИ-генерация персональной программы под профиль пользователя (цель/активность)
+    // и его реальную историю тренировок (типичные дни недели, если уже накопилась).
+    api.post('/api/training/generate-program', async (req) => {
+      const profile = await repo.getProfile(req.user.id)
+      const [library, pattern] = await Promise.all([
+        training.listExercises(),
+        training.inferTrainingPattern(req.user.id, profile.timezone),
+      ])
+      let plan
+      try {
+        plan = config.aiProvider === 'groq' && config.groqApiKey
+          ? await groqGenerateProgram(profile, library, pattern)
+          : mockGenerateProgram(library)
+      } catch (e) {
+        console.error('[training] groq generate-program failed, fallback to mock:', e)
+        plan = mockGenerateProgram(library)
+      }
+      return training.createProgram(req.user.id, plan)
+    })
+
+    // Агрегаты по тренировкам за последние 7 дней — для экрана «Прогресс».
+    api.get('/api/training/stats', async (req) => training.getTrainingStats(req.user.id, 7))
 
     api.get<{ Params: { id: string } }>('/api/training/program-days/:id', async (req, reply) => {
       const day = await training.getProgramDay(req.params.id)

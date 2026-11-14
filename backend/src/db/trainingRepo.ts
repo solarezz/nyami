@@ -1,8 +1,8 @@
-import { and, eq, or, desc } from 'drizzle-orm'
+import { and, eq, or, desc, gte } from 'drizzle-orm'
 import type {
   Exercise, TrainingProgram, ProgramDay, ProgramExercise, TrainingSession, ExerciseSetRecord,
 } from '@nyami/shared'
-import { type TrainingRepo, computeTrainingPattern } from '../training.js'
+import { type TrainingRepo, computeTrainingPattern, computeTrainingStats } from '../training.js'
 import { db, type Db } from './client.js'
 import {
   exercises, exerciseSubstitutes, trainingPrograms, trainingProgramDays, trainingProgramExercises,
@@ -105,7 +105,12 @@ export function createDrizzleTrainingRepo(): TrainingRepo {
     },
 
     async listPrograms(userId) {
-      const rows = await database.select().from(trainingPrograms).where(or(eq(trainingPrograms.isTemplate, true), eq(trainingPrograms.userId, userId)))
+      // Личные программы (новее — выше) идут перед общим шаблоном.
+      const rows = await database
+        .select()
+        .from(trainingPrograms)
+        .where(or(eq(trainingPrograms.isTemplate, true), eq(trainingPrograms.userId, userId)))
+        .orderBy(trainingPrograms.isTemplate, desc(trainingPrograms.createdAt))
       const programs: TrainingProgram[] = []
       for (const p of rows) {
         programs.push({ id: p.id, name: p.name, description: p.description, isTemplate: p.isTemplate, days: await loadProgramDays(p.id) })
@@ -117,6 +122,32 @@ export function createDrizzleTrainingRepo(): TrainingRepo {
       const rows = await database.select().from(trainingProgramDays).where(eq(trainingProgramDays.id, programDayId)).limit(1)
       if (!rows[0]) return null
       return { id: rows[0].id, name: rows[0].name, weekday: rows[0].weekday, exercises: await loadDayExercises(programDayId) }
+    },
+
+    async createProgram(userId, plan) {
+      const validExercises = new Set((await database.select({ id: exercises.id }).from(exercises)).map((r) => r.id))
+
+      const [programRow] = await database.insert(trainingPrograms).values({
+        userId, name: plan.name, description: plan.description, isTemplate: false,
+      }).returning()
+
+      for (let di = 0; di < plan.days.length; di++) {
+        const d = plan.days[di]
+        const dayExercises = d.exercises.filter((e) => validExercises.has(e.exerciseId))
+        if (dayExercises.length === 0) continue
+        const [dayRow] = await database.insert(trainingProgramDays).values({
+          programId: programRow.id, name: d.name, weekday: d.weekday, sortOrder: di,
+        }).returning()
+        for (let ei = 0; ei < dayExercises.length; ei++) {
+          const e = dayExercises[ei]
+          await database.insert(trainingProgramExercises).values({
+            programDayId: dayRow.id, exerciseId: e.exerciseId, sortOrder: ei,
+            targetSets: e.targetSets, targetRepsMin: e.targetRepsMin, targetRepsMax: e.targetRepsMax, restSeconds: e.restSeconds,
+          })
+        }
+      }
+
+      return { id: programRow.id, name: programRow.name, description: programRow.description, isTemplate: false, days: await loadProgramDays(programRow.id) }
     },
 
     async startSession(userId, req) {
@@ -167,6 +198,19 @@ export function createDrizzleTrainingRepo(): TrainingRepo {
         .orderBy(desc(trainingSessions.startedAt))
         .limit(20)
       return computeTrainingPattern(rows.map((r) => r.startedAt), timeZone)
+    },
+
+    async getTrainingStats(userId, days) {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+      const rows = await database
+        .select()
+        .from(trainingSessions)
+        .where(and(eq(trainingSessions.telegramId, userId), eq(trainingSessions.status, 'completed'), gte(trainingSessions.startedAt, since)))
+      const sessions: TrainingSession[] = []
+      for (const row of rows) {
+        sessions.push(toSession(row, await loadSessionSets(row.id)))
+      }
+      return computeTrainingStats(sessions)
     },
   }
 }

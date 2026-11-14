@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type {
   MeResponse, DaySummary, Recognition, AddMealRequest, RecognizeRequest, UpdateProfileRequest, UpdateFastingRequest,
-  WorkoutRecognition, AddWorkoutRequest, MealType,
+  WorkoutRecognition, AddWorkoutRequest, MealType, UpdateNotificationsRequest,
 } from '@nyami/shared'
 import { api, type WeekResponse } from '../api'
 
@@ -45,6 +45,7 @@ interface DataState {
   setWeight: (weightKg: number) => Promise<void>
   updateProfile: (req: UpdateProfileRequest) => Promise<void>
   setFasting: (req: UpdateFastingRequest) => Promise<void>
+  setNotifications: (req: UpdateNotificationsRequest) => Promise<void>
   askCoach: (message: string) => Promise<string>
 }
 
@@ -183,6 +184,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setMe(m)
   }, [])
 
+  const setNotifications = useCallback(async (req: UpdateNotificationsRequest) => {
+    await api.setNotifications(req)
+    const m = await api.getMe()
+    setMe(m)
+  }, [])
+
   const askCoach = useCallback(async (message: string) => {
     const { reply } = await api.coach(message)
     return reply
@@ -197,7 +204,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       pendingImage, setPendingImage,
       refresh, recognize, recognizeBarcode, addMeal, deleteMeal, updateMealItem, deleteMealItem,
       recognizeWorkout, addWorkout, deleteWorkout,
-      setWater, setWeight, updateProfile, setFasting, askCoach,
+      setWater, setWeight, updateProfile, setFasting, setNotifications, askCoach,
     }}>
       {children}
     </Ctx.Provider>

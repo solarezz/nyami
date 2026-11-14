@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { BottomNavV2 } from '../components/BottomNavV2'
 import { useToast } from '../components/ui/Toast'
 import { useData } from '../data/store'
+import { api } from '../api'
 import type { Screen } from '../App'
+import type { TrainingStats } from '../types'
 
 export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { day, week, me, setWeight } = useData()
@@ -11,6 +13,8 @@ export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [logging, setLogging] = useState(false)
   const [draft, setDraft] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [stats, setStats] = useState<TrainingStats | null>(null)
+  useEffect(() => { api.getTrainingStats().then(setStats).catch(() => {}) }, [])
   if (!day || !week) return null
 
   const NORM = day.goalKcal
@@ -97,6 +101,28 @@ export function Progress({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             {weekChart.map((d) => <div key={d.label} style={{ flex: 1, textAlign: 'center', font: '600 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>{d.label}</div>)}
           </div>
         </div>
+
+        {stats && stats.sessionsCount > 0 && (
+          <div className="v2-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ font: '700 15px var(--v2-font-text)' }}>Тренировки за неделю</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+              <div className="v2-tile">
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-mu)' }}>Тренировок</div>
+                <div className="num" style={{ fontWeight: 700, fontSize: 20, marginTop: 3 }}>{stats.sessionsCount}</div>
+              </div>
+              <div className="v2-tile">
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-mu)' }}>Подходов</div>
+                <div className="num" style={{ fontWeight: 700, fontSize: 20, marginTop: 3 }}>{stats.completedSets}</div>
+              </div>
+              <div className="v2-tile">
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-mu)' }}>Тоннаж</div>
+                <div className="num" style={{ fontWeight: 700, fontSize: 20, marginTop: 3 }}>{stats.totalVolumeKg.toLocaleString('ru-RU')}<span style={{ fontSize: 11, color: 'var(--v2-mu)', fontWeight: 500 }}> кг</span></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="v2-mini-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

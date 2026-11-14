@@ -2,18 +2,23 @@ import { ProfileForm } from '../components/ProfileForm'
 import { FastingSettings } from '../components/FastingSettings'
 import { BottomNavV2 } from '../components/BottomNavV2'
 import { MaterialIcon } from '../components/MaterialIcon'
+import { Avatar } from '../components/Avatar'
 import { useData } from '../data/store'
-import { getTelegramUser } from '../telegram'
+import { getTelegramUser, haptic } from '../telegram'
 import type { Screen } from '../App'
 import type { UpdateProfileRequest } from '../types'
 
 export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const { me, updateProfile } = useData()
+  const { me, updateProfile, setNotifications } = useData()
   if (!me) return null
   const p = me.profile
   const tgUser = getTelegramUser()
-  const photo = tgUser?.photo_url
-  const initial = (me.user.firstName ?? tgUser?.first_name ?? 'U').slice(0, 1).toUpperCase()
+  const displayName = me.user.firstName ?? tgUser?.first_name ?? 'Профиль'
+
+  const toggleReminders = () => {
+    haptic('light')
+    setNotifications({ remindersEnabled: !p.remindersEnabled }).catch(() => {})
+  }
 
   const formInitial: UpdateProfileRequest = {
     sex: p.sex, age: p.age, heightCm: p.heightCm, weightKg: p.weightKg, activity: p.activity, goal: p.goal,
@@ -28,9 +33,9 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   return (
     <div className="screen v2-screen gap fade">
       <div className="v2-topbar">
-        {photo ? <img className="v2-avatar" src={photo} alt="" style={{ objectFit: 'cover' }} /> : <div className="v2-avatar">{initial}</div>}
+        <Avatar photoUrl={tgUser?.photo_url} name={displayName} />
         <div style={{ flex: 1 }}>
-          <div style={{ font: '800 20px var(--v2-font-text)', letterSpacing: '-.025em' }}>{me.user.firstName ?? 'Профиль'}</div>
+          <div style={{ font: '800 20px var(--v2-font-text)', letterSpacing: '-.025em' }}>{displayName}</div>
           {me.user.username && <div style={{ font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>@{me.user.username}</div>}
         </div>
       </div>
@@ -47,6 +52,13 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
             <span style={{ flex: 1 }}>Коуч</span>
             <MaterialIcon name="chevron_right" size={20} style={{ color: 'var(--v2-mu)' }} />
           </button>
+          <div className="row">
+            <MaterialIcon name="notifications" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <span style={{ flex: 1 }}>Напоминания</span>
+            <button type="button" className={`v2-toggle${p.remindersEnabled ? ' on' : ''}`} onClick={toggleReminders} aria-label="Напоминания о приёмах пищи и отчёт за неделю" aria-pressed={p.remindersEnabled}>
+              <span className="knob" />
+            </button>
+          </div>
           <div className="row">
             <MaterialIcon name="public" size={20} style={{ color: 'var(--v2-mu)' }} />
             <span style={{ flex: 1 }}>Часовой пояс</span>

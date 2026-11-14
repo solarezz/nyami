@@ -73,11 +73,16 @@ export interface Profile {
   fastingProtocol: FastingProtocol
   eatStartHour: number // час начала окна еды (0–23)
   timezone: string // IANA, напр. "Europe/Moscow" — определяется на фронте, можно сменить в профиле
+  remindersEnabled: boolean // напоминания о приёмах пищи и еженедельный отчёт в Telegram
 }
 
 export interface UpdateFastingRequest {
   protocol: FastingProtocol
   eatStartHour: number
+}
+
+export interface UpdateNotificationsRequest {
+  remindersEnabled: boolean
 }
 
 /** Запись замера веса (за сейчас; попадает в weightSeries). */
@@ -315,4 +320,12 @@ export interface TrainingPattern {
   typicalWeekdays: number[] // подмножество 1..7 — дни, когда пользователь обычно тренируется
   typicalTimeOfDay: 'morning' | 'afternoon' | 'evening' | null
   sampleSize: number // сколько завершённых тренировок учтено
+}
+
+/** Агрегаты по завершённым тренировкам за период — для экрана «Прогресс». */
+export interface TrainingStats {
+  sessionsCount: number
+  completedSets: number
+  totalVolumeKg: number // сумма вес×повторы по завершённым подходам
+  totalMinutes: number
 }

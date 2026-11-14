@@ -64,6 +64,13 @@
       "when": 1794570259281,
       "tag": "0008_odd_vision",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794685101098,
+      "tag": "0009_icy_electro",
+      "breakpoints": true
     }
   ]
 }

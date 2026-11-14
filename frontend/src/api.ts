@@ -1,9 +1,9 @@
 import type {
   MeResponse, DaySummary, WeekDay, Meal, Recognition, Profile, FrequentMeal,
-  AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest, UpdateFastingRequest,
+  AddMealRequest, RecognizeRequest, CoachResponse, UpdateProfileRequest, UpdateFastingRequest, UpdateNotificationsRequest,
   Workout, WorkoutRecognition, AddWorkoutRequest, SetWeightResponse,
   TrainingProgram, TrainingPattern, Exercise, ExerciseDetail, ProgramDay,
-  TrainingSession, StartSessionRequest, RecordSetRequest,
+  TrainingSession, StartSessionRequest, RecordSetRequest, TrainingStats,
 } from '@nyami/shared'
 
 // В проде фронт и API на одном домене → относительный путь. В dev — локальный бэкенд.
@@ -35,6 +35,7 @@ export const api = {
   getMe: () => req<MeResponse>('/api/me'),
   updateProfile: (body: UpdateProfileRequest) => req<Profile>('/api/profile', { method: 'POST', body: JSON.stringify(body) }),
   setFasting: (body: UpdateFastingRequest) => req<Profile>('/api/fasting', { method: 'POST', body: JSON.stringify(body) }),
+  setNotifications: (body: UpdateNotificationsRequest) => req<Profile>('/api/notifications', { method: 'POST', body: JSON.stringify(body) }),
   getDay: (date?: string) => req<DaySummary>(`/api/day${date ? `?date=${date}` : ''}`),
   getWeek: () => req<WeekResponse>('/api/week'),
   addMeal: (body: AddMealRequest, date?: string) => req<Meal>('/api/meals', { method: 'POST', body: JSON.stringify({ ...body, date }) }),
@@ -60,4 +61,6 @@ export const api = {
   getTrainingSession: (id: string) => req<TrainingSession>(`/api/training/sessions/${id}`),
   recordSet: (sessionId: string, body: RecordSetRequest) => req<TrainingSession>(`/api/training/sessions/${sessionId}/sets`, { method: 'POST', body: JSON.stringify(body) }),
   completeTrainingSession: (sessionId: string) => req<TrainingSession>(`/api/training/sessions/${sessionId}/complete`, { method: 'POST' }),
+  generateTrainingProgram: () => req<TrainingProgram>('/api/training/generate-program', { method: 'POST' }),
+  getTrainingStats: () => req<TrainingStats>('/api/training/stats'),
 }
