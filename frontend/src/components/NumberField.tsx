@@ -4,18 +4,19 @@ import { haptic } from '../telegram'
 
 // Числовое поле: −/+ степперы и свободный ввод. Кламп применяется ТОЛЬКО при
 // потере фокуса (не на каждый символ) — поэтому ввод не «прыгает».
+// Единственный оставшийся вызов (Today.tsx, редактирование граммовки) — плотная
+// строка без обёртки/подписи, поэтому label тут не нужен.
 export function NumberField({
-  label, value, min, max, step = 1, decimals = 0, onChange, compact,
+  value, min, max, step = 1, decimals = 0, onChange, label,
 }: {
-  label?: string
   value: number
   min: number
   max: number
   step?: number
   decimals?: number
   onChange: (v: number) => void
-  /** Без обёртки .frow и подписи — плотная строка внутри списка (напр. компоненты приёма). */
-  compact?: boolean
+  /** Только для aria-label кнопок (строка не рендерится). */
+  label?: string
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   const clamp = (n: number) => Math.max(min, Math.min(max, n))
@@ -32,7 +33,7 @@ export function NumberField({
     setDraft(null)
   }
 
-  const field = (
+  return (
     <div className="numfield">
       <button onClick={() => bump(-step)} aria-label={label ? `${label}: меньше` : 'Меньше'}><Icon name="minus" /></button>
       <input
@@ -44,15 +45,6 @@ export function NumberField({
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
       />
       <button onClick={() => bump(step)} aria-label={label ? `${label}: больше` : 'Больше'}><Icon name="plus" /></button>
-    </div>
-  )
-
-  if (compact) return field
-
-  return (
-    <div className="frow">
-      <span className="muted">{label}</span>
-      {field}
     </div>
   )
 }

@@ -383,7 +383,7 @@ function MealCard({
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{it.name}</div>
                 <span className="num" style={{ fontSize: 12, color: 'var(--v2-mu)' }}>{it.kcal} ккал · {it.grams} г</span>
               </div>
-              <NumberField compact value={it.grams} min={1} max={2000} step={10} onChange={(g) => onChangeItemGrams(it.id, g)} label={`Масса «${it.name}»`} />
+              <NumberField value={it.grams} min={1} max={2000} step={10} onChange={(g) => onChangeItemGrams(it.id, g)} label={`Масса «${it.name}»`} />
               <button onClick={() => onDeleteItem(it.id)} aria-label={`Удалить «${it.name}»`} style={{ color: 'var(--v2-mu)', display: 'flex' }}><MaterialIcon name="delete" size={16} /></button>
             </div>
           ))}
