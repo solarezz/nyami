@@ -396,3 +396,135 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .v2-chatf::placeholder{color:var(--v2-mu);}
 .v2-sendb{width:44px;height:44px;border-radius:10px;background:var(--v2-lime);color:var(--v2-on);
   display:flex;align-items:center;justify-content:center;flex:none;border:none;}
+
+/* ============================================================================
+   Дизайн-система v3 — редизайн экрана «Сегодня» 1:1 по макету пользователя
+   («Redesign _Сегодня_ screen/Fitness App.dc.html», экран «01 · Сегодня»):
+   светлая пастельно-зелёная тема, Inter Tight, Material Symbols ROUNDED,
+   глянцевые белые карточки с мягкой тенью. Независима от v2 (другой экран,
+   другая палитра) — живёт рядом, остальные экраны v3 не трогает.
+   Внешние декоративные картинки макета (эмодзи-CDN, Unsplash) заменены на
+   нативные эмодзи — проект принципиально не грузит сторонние ассеты.
+   ============================================================================ */
+:root{
+  --v3-bg-top:#E7F2DB; --v3-bg-mid:#F3F5F0; --v3-bg-bot:#F3F5F0;
+  --v3-ink:#161A14; --v3-mu:#7B8175; --v3-mu2:#59614F; --v3-mu3:#4A5244;
+  --v3-card:#FFFFFF; --v3-line:rgba(30,45,20,0.07);
+  --v3-shadow-card:0 0 0 1px rgba(30,45,20,0.07),0 8px 22px rgba(30,50,20,0.09),0 2px 4px rgba(30,50,20,0.05),inset 0 2px 0 #FFFFFF,inset 0 -2px 4px rgba(30,50,20,0.03);
+  --v3-shadow-soft:0 4px 14px rgba(30,50,20,0.07);
+  --v3-green:#4E9A22; --v3-green-deep:#3B7A18; --v3-green-soft:#E3F2D2; --v3-avatar:#5FAE2E;
+  --v3-lime:#B6E67A; --v3-lime-deep:#A6DB66;
+  --v3-hero-a:#E4F4D1; --v3-hero-b:#CFEAB0; --v3-hero-badge:#BCE197; --v3-hero-ic:#2F6B12;
+  --v3-vio:#9B7BFF; --v3-vio-track:#EFEAFF;
+  --v3-org:#FFA23D; --v3-org-track:#FFF1DE;
+  --v3-blu:#3D8BFF; --v3-blu-track:#E3EEFF; --v3-blu-soft:#EEF3FB;
+  --v3-tip-bg:#EAF5DD; --v3-tip-ic:#D4ECBA; --v3-tip-tx:#3F5233;
+  --v3-font-text:'Inter Tight',-apple-system,'SF Pro Display','SF Pro Text',system-ui,sans-serif;
+}
+/* Разумный тёмный фолбэк для клиентов Telegram в тёмной теме — макет сам светлый,
+   «1:1» это не покрывает, но экран не должен выглядеть сломанным. */
+:root[data-theme="dark"]{
+  --v3-bg-top:#121510; --v3-bg-mid:#121510; --v3-bg-bot:#121510;
+  --v3-ink:#F2F4EE; --v3-mu:#9CA297; --v3-mu2:#9CA297; --v3-mu3:#B5BCAE;
+  --v3-card:#1B1F17; --v3-line:rgba(255,255,255,0.08);
+  --v3-shadow-card:0 0 0 1px rgba(255,255,255,0.06),0 8px 22px rgba(0,0,0,0.35),0 2px 4px rgba(0,0,0,0.2);
+  --v3-shadow-soft:0 4px 14px rgba(0,0,0,0.3);
+  --v3-green:#8FDB4A; --v3-green-deep:#B6E67A; --v3-green-soft:#2A3B1C; --v3-avatar:#5FAE2E;
+  --v3-lime:#C8F135; --v3-lime-deep:#B6E020;
+  --v3-hero-a:#243018; --v3-hero-b:#324423; --v3-hero-badge:#3C5024; --v3-hero-ic:#C8F135;
+  --v3-vio:#A98BFF; --v3-vio-track:#2A2440;
+  --v3-org:#FFB366; --v3-org-track:#3A2A18;
+  --v3-blu:#5FA8FF; --v3-blu-track:#1C2A3C; --v3-blu-soft:#1C2432;
+  --v3-tip-bg:#232D1A; --v3-tip-ic:#33421F; --v3-tip-tx:#DCE6CF;
+}
+
+.v3-screen{background:linear-gradient(180deg,var(--v3-bg-top) 0%,var(--v3-bg-mid) 34%,var(--v3-bg-bot) 100%);
+  color:var(--v3-ink);font-family:var(--v3-font-text);}
+.v3-screen b, .v3-screen strong{font-weight:700;}
+.v3-screen .num{font-variant-numeric:tabular-nums;}
+
+/* Material Symbols ROUNDED — только для v3-экрана. */
+.msr{
+  font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;
+  display:inline-block;line-height:1;white-space:nowrap;word-wrap:normal;direction:ltr;
+  -webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;
+  font-feature-settings:'liga'; text-rendering:optimizeLegibility;
+  vertical-align:middle;flex:none;
+}
+.msr.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;}
+
+.v3-topbar{display:flex;align-items:center;gap:12px;padding:4px 2px 2px;}
+.v3-avatar{width:44px;height:44px;border-radius:14px;background:var(--v3-avatar);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:18px;flex:none;position:relative;overflow:hidden;}
+.v3-iconbtn{width:44px;height:44px;border-radius:22px;border:none;background:var(--v3-card);
+  box-shadow:var(--v3-shadow-soft);cursor:pointer;display:grid;place-items:center;flex:none;color:var(--v3-ink);}
+
+.v3-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.v3-daycell{height:56px;border:none;border-radius:16px;cursor:pointer;background:transparent;color:var(--v3-ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:inherit;}
+.v3-daycell .wd{font-size:11px;font-weight:500;opacity:.65;}
+.v3-daycell .dn{font-size:17px;font-weight:700;}
+.v3-daycell.sel{background:var(--v3-ink);color:var(--v3-bg-mid);}
+.v3-daycell .dot{width:4px;height:4px;border-radius:50%;margin-top:1px;}
+
+.v3-card{background:var(--v3-card);border-radius:28px;padding:18px;box-shadow:var(--v3-shadow-card);
+  border:2px solid var(--v3-card);box-sizing:border-box;}
+
+/* ---- Карточка тренировки (герой, слегка наклонена — акцент макета) ---- */
+.v3-hero{position:relative;transform:rotate(-2.5deg);margin:6px 4px;border-radius:28px;
+  background:radial-gradient(120% 90% at 85% 30%,#EEF9E2 0%,rgba(238,249,226,0) 60%),linear-gradient(160deg,var(--v3-hero-a) 0%,var(--v3-hero-b) 100%);
+  padding:20px;min-height:178px;box-sizing:border-box;overflow:hidden;border:2px solid rgba(255,255,255,0.85);
+  box-shadow:0 0 0 1px rgba(60,110,20,0.12),0 12px 28px rgba(80,140,40,0.2),0 2px 4px rgba(60,110,20,0.08),inset 0 2px 0 rgba(255,255,255,0.9);
+  color:var(--v3-ink);}
+.v3-hero-ic{width:46px;height:46px;border-radius:23px;background:var(--v3-hero-badge);display:grid;place-items:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);color:var(--v3-hero-ic);flex:none;}
+.v3-hero-fab{position:absolute;right:18px;bottom:18px;width:44px;height:44px;border-radius:22px;border:none;
+  background:var(--v3-card);cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px rgba(30,50,20,0.1);color:var(--v3-ink);}
+.v3-hero-stat{background:rgba(255,255,255,.55);border-radius:14px;padding:8px 10px;text-align:center;}
+
+.v3-nutri-card{display:flex;flex-direction:column;gap:14px;}
+.v3-tile{background:var(--v3-card);border:1px solid var(--v3-line);box-shadow:0 2px 6px rgba(30,50,20,0.05);
+  border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;}
+.v3-dot{width:7px;height:7px;border-radius:50%;flex:none;}
+
+.v3-tip{background:var(--v3-tip-bg);border-radius:24px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;}
+.v3-tip-ic{width:40px;height:40px;border-radius:20px;background:var(--v3-tip-ic);display:grid;place-items:center;
+  flex-shrink:0;font-size:20px;}
+
+.v3-mini{background:var(--v3-card);border-radius:24px;padding:16px;box-shadow:var(--v3-shadow-card);
+  border:2px solid var(--v3-card);display:flex;flex-direction:column;gap:6px;min-height:170px;box-sizing:border-box;position:relative;overflow:hidden;}
+.v3-mini.water{background:linear-gradient(160deg,var(--v3-card) 0%,var(--v3-blu-track) 100%);}
+.v3-mini-stepbtn{width:36px;height:36px;border-radius:18px;border:none;cursor:pointer;display:grid;place-items:center;}
+
+.v3-fav-card{background:var(--v3-card);border-radius:20px;aspect-ratio:1;display:grid;place-items:center;
+  box-shadow:0 6px 18px rgba(30,50,20,0.06);font-size:30px;cursor:pointer;border:none;}
+
+.v3-meal-row{background:var(--v3-card);border-radius:22px;padding:8px 8px 8px 10px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 0 0 1px var(--v3-line);}
+.v3-meal-row .thumb{width:40px;height:40px;border-radius:14px;background:var(--v3-green-soft);color:var(--v3-green-deep);
+  display:grid;place-items:center;flex:none;font-size:18px;}
+
+.v3-btn-primary{height:52px;padding:0 20px;border:none;border-radius:26px;background:var(--v3-lime);color:var(--v3-ink);
+  font-size:15px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;}
+.v3-btn-primary:disabled{opacity:.6;}
+.v3-link{font-size:14px;color:var(--v3-mu2);font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
+
+.v3-sheet-backdrop{position:fixed;inset:0;background:rgba(10,15,5,.45);display:flex;align-items:flex-end;z-index:50;}
+.v3-sheet{background:var(--v3-card);border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  width:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:10px;max-height:70vh;overflow-y:auto;}
+.v3-pickrow{display:flex;align-items:center;gap:12px;width:100%;border:none;background:var(--v3-green-soft,#F0F1EC);
+  border-radius:16px;padding:12px;text-align:left;font-family:inherit;color:inherit;cursor:pointer;}
+.v3-pickrow .ttl{font-size:15px;font-weight:700;}
+.v3-pickrow .dsc{font-size:12px;color:var(--v3-mu);margin-top:1px;}
+
+/* ---- Нижняя навигация v3: прозрачная белая плашка с блюром ---- */
+.v3-nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:0 10px calc(12px + env(safe-area-inset-bottom));
+  box-sizing:border-box;background:color-mix(in srgb, var(--v3-card) 92%, transparent);backdrop-filter:blur(20px);
+  border-top:1px solid var(--v3-line);display:flex;align-items:center;justify-content:space-around;}
+.v3-nav .ni{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--v3-mu);border:none;background:none;
+  font-family:inherit;cursor:pointer;padding:6px 4px;}
+.v3-nav .ni .msr{font-size:22px;}
+.v3-nav .ni .nl{font-size:10.5px;font-weight:600;}
+.v3-nav .ni.on{color:var(--v3-green);}
+.v3-nav-fab{width:52px;height:52px;border-radius:26px;background:var(--v3-lime);color:var(--v3-ink);border:none;
+  display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:0 8px 18px rgba(100,170,50,.3);}

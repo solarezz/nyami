@@ -4,14 +4,14 @@ import { useState } from 'react'
 // иногда грузится медленно или не грузится вовсе (приватность/версия клиента).
 // Поэтому инициал рисуем сразу, а фото подставляем поверх только после успешной
 // загрузки — если оно зависло или упало, пользователь просто видит инициал.
-export function Avatar({ photoUrl, name }: { photoUrl?: string | null; name: string }) {
+export function Avatar({ photoUrl, name, className = 'v2-avatar' }: { photoUrl?: string | null; name: string; className?: string }) {
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
   const initial = (name || 'Н').slice(0, 1).toUpperCase()
   const showPhoto = Boolean(photoUrl) && !failed
 
   return (
-    <div className="v2-avatar" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className={className} style={{ position: 'relative', overflow: 'hidden' }}>
       {!loaded && initial}
       {showPhoto && (
         <img
