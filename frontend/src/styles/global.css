@@ -96,6 +96,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--v2-s1) 60%,transparent),transparent);}
 @media (prefers-reduced-motion:no-preference){.v2-skel::after{animation:skel-sweep 1.4s ease-in-out infinite;}}
 @keyframes skel-sweep{100%{transform:translateX(100%);}}
+.v3-skel{position:relative;overflow:hidden;background:var(--v3-day-a-off,#EDEFE8);border-radius:10px;}
+.v3-skel::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent);}
+@media (prefers-reduced-motion:no-preference){.v3-skel::after{animation:skel-sweep 1.4s ease-in-out infinite;}}
 
 /* ---- Toast: лёгкое ненавязчивое уведомление (для случаев, где showAlert слишком тяжёл) ---- */
 .toast-stack{position:fixed;left:0;right:0;bottom:calc(86px + env(safe-area-inset-bottom));z-index:120;
@@ -419,6 +423,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   --v3-org:#FFA23D; --v3-org-track:#FFF1DE;
   --v3-blu:#3D8BFF; --v3-blu-track:#E3EEFF; --v3-blu-soft:#EEF3FB;
   --v3-tip-bg:#EAF5DD; --v3-tip-ic:#D4ECBA; --v3-tip-tx:#3F5233;
+  --v3-day-a:#E6F6D3; --v3-day-b:#CFEAB0; --v3-day-border:#8FCB5C; --v3-day-border-off:#E3E8DD;
+  --v3-day-a-off:#FFFFFF; --v3-day-b-off:#F6F8F3; --v3-day-ink:#2F6B12;
+  --v3-nav-ink:#161A14; --v3-nav-mu:#8E9588; --v3-fab:#7CC447;
+  --v3-chip-off:#FFFFFF; --v3-chip-on:#B6E67A; --v3-chip-ink:#161A14; --v3-chip-mu:#59614F;
   --v3-font-text:'Inter Tight',-apple-system,'SF Pro Display','SF Pro Text',system-ui,sans-serif;
 }
 /* Разумный тёмный фолбэк для клиентов Telegram в тёмной теме — макет сам светлый,
@@ -436,6 +444,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   --v3-org:#FFB366; --v3-org-track:#3A2A18;
   --v3-blu:#5FA8FF; --v3-blu-track:#1C2A3C; --v3-blu-soft:#1C2432;
   --v3-tip-bg:#232D1A; --v3-tip-ic:#33421F; --v3-tip-tx:#DCE6CF;
+  --v3-day-a:#243018; --v3-day-b:#324423; --v3-day-border:#5A8F2E; --v3-day-border-off:rgba(255,255,255,0.08);
+  --v3-day-a-off:#1B1F17; --v3-day-b-off:#20251C; --v3-day-ink:#C8F135;
+  --v3-nav-ink:#F2F4EE; --v3-nav-mu:#767C70; --v3-fab:#6CB83A;
+  --v3-chip-off:#1B1F17; --v3-chip-on:#B6E67A; --v3-chip-ink:#12140F; --v3-chip-mu:#9CA297;
 }
 
 .v3-screen{background:linear-gradient(180deg,var(--v3-bg-top) 0%,var(--v3-bg-mid) 34%,var(--v3-bg-bot) 100%);
@@ -460,12 +472,25 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   box-shadow:var(--v3-shadow-soft);cursor:pointer;display:grid;place-items:center;flex:none;color:var(--v3-ink);}
 
 .v3-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
-.v3-daycell{height:56px;border:none;border-radius:16px;cursor:pointer;background:transparent;color:var(--v3-ink);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:inherit;}
+.v3-daycell{height:62px;border-radius:18px;cursor:pointer;font-family:inherit;padding:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border:1px solid var(--v3-day-border-off);color:var(--v3-ink);
+  background:linear-gradient(180deg,var(--v3-day-a-off) 0%,var(--v3-day-b-off) 100%);
+  box-shadow:0 3px 8px rgba(30,50,20,.07),inset 0 1px 0 #FFFFFF;}
 .v3-daycell .wd{font-size:11px;font-weight:500;opacity:.65;}
 .v3-daycell .dn{font-size:17px;font-weight:700;}
-.v3-daycell.sel{background:var(--v3-ink);color:var(--v3-bg-mid);}
-.v3-daycell .dot{width:4px;height:4px;border-radius:50%;margin-top:1px;}
+.v3-daycell.sel{border:1.5px solid var(--v3-day-border);color:var(--v3-day-ink);
+  background:linear-gradient(180deg,var(--v3-day-a) 0%,var(--v3-day-b) 100%);}
+
+/* ---- Чипы-переключатели (вкладки «Программы/Упражнения/Избранное» и т.п.) ---- */
+.v3-chip{height:38px;padding:0 16px;border-radius:19px;border:none;cursor:pointer;font-family:inherit;
+  font-size:14px;font-weight:600;background:var(--v3-chip-off);color:var(--v3-chip-ink);
+  box-shadow:0 4px 12px rgba(30,50,20,.05);flex:none;}
+.v3-chip.on{background:var(--v3-chip-on);box-shadow:none;}
+/* ---- Сегменты в один ряд, растянуты на всю ширину (период в «Прогрессе») ---- */
+.v3-seg{flex:1;height:40px;border-radius:18px;border:none;cursor:pointer;font-family:inherit;
+  font-size:14px;font-weight:600;background:transparent;color:var(--v3-chip-mu);transition:background .2s;}
+.v3-seg.on{background:var(--v3-chip-on);color:var(--v3-chip-ink);}
 
 .v3-card{background:var(--v3-card);border-radius:28px;padding:18px;box-shadow:var(--v3-shadow-card);
   border:2px solid var(--v3-card);box-sizing:border-box;}
@@ -521,10 +546,167 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .v3-nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:0 10px calc(12px + env(safe-area-inset-bottom));
   box-sizing:border-box;background:color-mix(in srgb, var(--v3-card) 92%, transparent);backdrop-filter:blur(20px);
   border-top:1px solid var(--v3-line);display:flex;align-items:center;justify-content:space-around;}
-.v3-nav .ni{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--v3-mu);border:none;background:none;
+.v3-nav .ni{display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;color:var(--v3-nav-mu);border:none;background:none;
   font-family:inherit;cursor:pointer;padding:6px 4px;}
-.v3-nav .ni .msr{font-size:22px;}
-.v3-nav .ni .nl{font-size:10.5px;font-weight:600;}
+.v3-nav .ni .msr{font-size:24px;}
+.v3-nav .ni .nl{font-size:11px;font-weight:500;}
 .v3-nav .ni.on{color:var(--v3-green);}
-.v3-nav-fab{width:52px;height:52px;border-radius:26px;background:var(--v3-lime);color:var(--v3-ink);border:none;
-  display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:0 8px 18px rgba(100,170,50,.3);}
+.v3-nav .ni.on .nl{font-weight:700;}
+.v3-nav-fab{width:56px;height:56px;border-radius:28px;background:var(--v3-fab);color:#fff;border:none;margin-top:-14px;
+  display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:0 8px 20px rgba(100,170,50,.4);}
+
+/* ---- Экран «Тренировки»: промо-карточка программы (плоская, не наклонена) ---- */
+.v3-promo{position:relative;border-radius:28px;overflow:hidden;min-height:200px;box-sizing:border-box;padding:20px;
+  background:linear-gradient(135deg,var(--v3-hero-a) 0%,var(--v3-hero-b) 100%);border:2px solid rgba(255,255,255,.7);
+  box-shadow:0 0 0 1px rgba(30,45,20,.07),0 10px 24px rgba(30,50,20,.1);color:var(--v3-ink);
+  display:flex;flex-direction:column;gap:10px;}
+.v3-exrow{background:var(--v3-card);border-radius:18px;padding:10px 12px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 0 0 1px var(--v3-line);}
+.v3-exnum{font-size:13px;font-weight:700;color:var(--v3-mu);width:22px;flex:none;}
+.v3-prcard{background:linear-gradient(135deg,#FFF3D6,#FFE6B0);border-radius:22px;padding:16px;display:flex;align-items:center;gap:14px;}
+.v3-pricon{width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,.6);display:grid;place-items:center;
+  color:#C98A00;flex:none;}
+.v3-exgrid-card{display:flex;flex-direction:column;gap:8px;cursor:pointer;background:none;border:none;text-align:left;font-family:inherit;color:inherit;}
+.v3-exgrid-ph{height:120px;border-radius:20px;display:grid;place-items:center;font-size:40px;}
+
+/* ---- Экран «Добавить еду» ---- */
+.v3-photocta{background:linear-gradient(160deg,#FFA23D,#F07A2B);color:#fff;border-radius:24px;padding:18px;
+  display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;border:none;
+  text-align:left;font-family:inherit;width:100%;}
+.v3-photocta-ic{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.22);color:#fff;
+  display:flex;align-items:center;justify-content:center;}
+.v3-opt2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.v3-optmini{background:var(--v3-card);border-radius:18px;padding:14px;box-shadow:var(--v3-shadow-card);
+  border:2px solid var(--v3-card);display:flex;flex-direction:column;gap:10px;text-align:left;font-family:inherit;color:inherit;box-sizing:border-box;}
+.v3-optmini-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+.v3-searchrow{height:50px;border-radius:25px;background:var(--v3-card);display:flex;align-items:center;gap:10px;
+  padding:0 18px;box-shadow:var(--v3-shadow-soft);}
+.v3-searchrow textarea{flex:1;background:none;border:none;outline:none;font:500 15px var(--v3-font-text);
+  color:var(--v3-ink);resize:none;font-family:inherit;}
+.v3-sendbtn{width:36px;height:36px;border-radius:10px;background:var(--v3-org);color:#fff;
+  display:flex;align-items:center;justify-content:center;border:none;flex:none;}
+.v3-sendbtn:disabled{opacity:.5;}
+.v3-aihint{background:var(--v3-tip-bg);border-radius:16px;padding:12px 14px;display:flex;gap:10px;
+  align-items:flex-start;font:500 13px/1.4 var(--v3-font-text);color:var(--v3-tip-tx);}
+
+/* ---- Экран «Прогресс» ---- */
+.v3-segrow{display:flex;gap:6px;background:var(--v3-card);border-radius:22px;padding:4px;box-shadow:var(--v3-shadow-soft);}
+.v3-chartbadge{position:absolute;right:28px;top:14px;padding:6px 12px;border-radius:12px;background:var(--v3-nav-ink);color:var(--v3-bg-mid);font-size:14px;font-weight:700;}
+.v3-statcard{background:var(--v3-card);border-radius:22px;padding:14px 10px;text-align:center;box-shadow:var(--v3-shadow-card);
+  border:2px solid var(--v3-card);display:flex;flex-direction:column;align-items:center;gap:6px;box-sizing:border-box;}
+.v3-staticon{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;}
+
+/* ---- Заголовок экрана / шаг-индикатор (онбординг) ---- */
+.v3-h1{font-size:28px;font-weight:800;line-height:1.1;letter-spacing:-.035em;}
+.v3-sub{font-size:14px;line-height:1.4;font-weight:500;color:var(--v3-mu);}
+.v3-label{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--v3-mu);}
+.v3-stepbar{display:flex;gap:4px;}
+.v3-stepbar i{flex:1;height:4px;border-radius:2px;background:var(--v3-line);}
+.v3-stepbar i.on{background:var(--v3-green);}
+
+/* ---- Форма профиля: пол, параметры-степперы, BMI, выбор цели/активности ---- */
+.v3-sexgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.v3-sexcard{background:var(--v3-card);border:1.5px solid var(--v3-line);border-radius:18px;padding:16px;box-shadow:var(--v3-shadow-soft);
+  display:flex;flex-direction:column;align-items:center;gap:8px;font-size:16px;font-weight:700;color:inherit;font-family:inherit;}
+.v3-sexcard.on{background:var(--v3-lime);color:var(--v3-ink);border-color:transparent;}
+
+.v3-field{background:var(--v3-card);border-radius:18px;padding:12px;display:flex;align-items:center;gap:12px;box-shadow:var(--v3-shadow-soft);}
+.v3-field-icon{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:none;}
+.v3-field-label{font-size:13px;font-weight:600;color:var(--v3-mu);}
+.v3-field-value{font-size:26px;font-weight:700;letter-spacing:-.02em;}
+.v3-field-unit{font-size:14px;font-weight:500;color:var(--v3-mu);}
+.v3-stepbtn{width:44px;height:44px;border-radius:14px;background:var(--v3-day-a-off,#F0F1EC);display:flex;align-items:center;justify-content:center;
+  flex:none;border:none;color:inherit;font-family:inherit;}
+.v3-stepbtn:disabled{opacity:.4;}
+
+.v3-bmirow{display:flex;gap:3px;position:relative;}
+.v3-bmimark{position:absolute;top:-3px;width:2px;height:14px;background:var(--v3-ink);}
+
+.v3-optrow{background:var(--v3-card);border:1.5px solid var(--v3-line);border-radius:18px;padding:12px 14px;box-shadow:var(--v3-shadow-soft);
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-family:inherit;color:inherit;}
+.v3-optrow.on{background:var(--v3-lime);color:var(--v3-ink);border-color:transparent;box-shadow:none;}
+.v3-optrow .ttl{font-size:16px;font-weight:700;letter-spacing:-.01em;}
+.v3-optrow .dsc{font-size:12px;font-weight:500;opacity:.75;margin-top:3px;}
+.v3-optrow .pct{font-size:15px;font-weight:700;flex:none;}
+.v3-optrow-icon{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--v3-day-a-off,#F0F1EC);}
+.v3-optrow.on .v3-optrow-icon{background:rgba(0,0,0,.12);color:inherit;}
+
+.v3-barset{display:flex;gap:3px;align-items:flex-end;width:28px;height:22px;flex:none;}
+.v3-barset i{flex:1;border-radius:1px;background:currentColor;opacity:.3;}
+.v3-barset i.on{opacity:1;}
+
+.v3-resulthero{background:linear-gradient(160deg,var(--v3-hero-a),var(--v3-hero-b));color:var(--v3-ink);border-radius:22px;padding:18px;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;border:2px solid rgba(255,255,255,.7);}
+.v3-macrogrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.v3-macrotile{background:var(--v3-card);border:1px solid var(--v3-line);border-radius:16px;padding:12px;box-shadow:0 2px 6px rgba(30,50,20,.05);
+  display:flex;flex-direction:column;gap:4px;}
+
+/* ---- Профиль: меню настроек ---- */
+.v3-settingsrow{background:var(--v3-card);border-radius:18px;overflow:hidden;box-shadow:var(--v3-shadow-card);border:2px solid var(--v3-card);}
+.v3-settingsrow .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--v3-line);font-size:14px;font-weight:600;}
+.v3-settingsrow .row:last-child{border-bottom:none;}
+.v3-toggle{width:52px;height:32px;border-radius:16px;background:#DDE2D7;position:relative;flex:none;border:none;padding:0;transition:background .2s;}
+.v3-toggle.on{background:var(--v3-fab);}
+.v3-toggle .knob{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:13px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:transform .2s;}
+.v3-toggle.on .knob{transform:translateX(20px);}
+
+/* ---- Тренировочная сессия (активная тренировка) ---- */
+.v3-musclebadge{padding:4px 9px;border-radius:9px;font-size:11px;font-weight:700;flex:none;}
+.v3-sessiontop{height:52px;flex:none;display:flex;align-items:center;gap:10px;}
+.v3-finishbtn{height:40px;padding:0 14px;border-radius:20px;border:none;color:var(--v3-ink);
+  display:flex;align-items:center;font-size:14px;font-weight:700;background:var(--v3-lime);font-family:inherit;flex:none;}
+.v3-exseg{display:flex;gap:3px;}
+.v3-exseg button{flex:1;height:5px;border-radius:3px;background:var(--v3-line);border:none;padding:0;}
+.v3-exseg button.done{background:var(--v3-green);}
+.v3-exseg button.current{background:var(--v3-ink);}
+.v3-videoph{height:220px;border-radius:24px;border:none;display:flex;align-items:center;justify-content:center;gap:8px;
+  font-size:13px;font-weight:500;color:var(--v3-mu);background:linear-gradient(160deg,#F4F5F1,#DCE0D7);}
+.v3-setstable{background:var(--v3-card);border-radius:18px;overflow:hidden;box-shadow:var(--v3-shadow-card);border:2px solid var(--v3-card);}
+.v3-setrow{display:grid;grid-template-columns:30px 1fr 56px 46px;gap:6px;padding:9px 12px;align-items:center;border-bottom:1px solid var(--v3-line);}
+.v3-setrow:last-child{border-bottom:none;}
+.v3-bigstepper{display:flex;flex-direction:column;gap:10px;background:var(--v3-card);border-radius:22px;padding:14px;box-shadow:var(--v3-shadow-card);border:2px solid var(--v3-card);}
+.v3-bigstepper .row{display:flex;align-items:center;justify-content:space-between;}
+.v3-navfooter{padding:10px 0 2px;flex:none;display:flex;gap:8px;}
+.v3-navbtn{width:52px;height:52px;border-radius:16px;background:var(--v3-card);border:none;box-shadow:var(--v3-shadow-soft);
+  display:flex;align-items:center;justify-content:center;flex:none;color:inherit;font-family:inherit;}
+.v3-navbtn:disabled{opacity:.4;}
+.v3-navnext{flex:1;height:52px;border-radius:16px;background:var(--v3-card);border:none;box-shadow:var(--v3-shadow-soft);
+  display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;color:inherit;text-align:left;font-family:inherit;}
+.v3-navnext:disabled{opacity:.4;}
+
+/* Полноэкранный режим отдыха между подходами — тёмный, как в макете (экран «05 Отдых»),
+   поверх обычной (светлой) v3-сессии. */
+.v3-rest{position:fixed;inset:0;z-index:60;background:radial-gradient(120% 80% at 50% 0%,#1c2416 0%,#121510 60%);
+  color:#fff;display:flex;flex-direction:column;align-items:center;}
+.v3-rest-top{width:100%;box-sizing:border-box;padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:600;}
+.v3-rest-bottom{width:100%;box-sizing:border-box;max-width:480px;padding:0 24px calc(28px + env(safe-area-inset-bottom));margin-top:auto;}
+.v3-rest-skip{width:100%;height:56px;border-radius:28px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.1);color:#fff;font-size:16px;font-weight:600;font-family:inherit;}
+
+/* ---- Добавить активность (AddWorkout), Результат (Result), Коуч (Coach) ---- */
+.v3-mini-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;}
+.v3-photoframe{height:150px;border-radius:20px;overflow:hidden;position:relative;flex:none;background:var(--v3-day-a-off,#F0F1EC);}
+.v3-photoframe img{width:100%;height:100%;object-fit:cover;display:block;}
+.v3-aibadge{position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:4px;padding:5px 9px;
+  border-radius:10px;background:#D99A00;color:#fff;font-size:12px;font-weight:700;}
+.v3-totalsgrid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:6px;align-items:end;}
+.v3-totalbar{height:4px;margin-bottom:6px;border-radius:2px;}
+.v3-ingrow{background:var(--v3-card);border-radius:16px;padding:10px 12px;box-shadow:0 0 0 1px var(--v3-line);
+  display:flex;gap:10px;align-items:center;}
+.v3-qtystepper{display:flex;align-items:center;background:var(--v3-day-a-off,#F0F1EC);border-radius:12px;height:40px;flex:none;}
+.v3-qtystepper button{width:32px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:inherit;}
+.v3-qtystepper input{width:42px;border:0;background:transparent;text-align:center;font-size:15px;font-weight:700;
+  outline:none;padding:0;color:inherit;font-family:inherit;}
+
+.v3-chatarea{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding:2px 0 8px;}
+.v3-chatarea::-webkit-scrollbar{display:none;}
+.v3-bub{max-width:82%;padding:11px 14px;font-size:14px;line-height:1.45;font-weight:500;border-radius:18px;}
+.v3-bub.in{align-self:flex-start;background:var(--v3-card);box-shadow:var(--v3-shadow-soft);border-bottom-left-radius:4px;}
+.v3-bub.in b{color:var(--v3-green-deep);font-weight:800;}
+.v3-bub.out{align-self:flex-end;background:var(--v3-lime);color:var(--v3-ink);border-bottom-right-radius:4px;font-weight:600;}
+.v3-chatbar{display:flex;align-items:center;gap:9px;padding:10px 0 calc(12px + env(safe-area-inset-bottom));flex:none;}
+.v3-chatf{flex:1;background:var(--v3-card);box-shadow:var(--v3-shadow-soft);border:none;border-radius:20px;padding:12px 16px;
+  color:var(--v3-ink);font-size:14px;font-weight:500;font-family:inherit;}
+.v3-chatf::placeholder{color:var(--v3-mu);}
+.v3-sendb{width:44px;height:44px;border-radius:14px;background:var(--v3-lime);color:var(--v3-ink);
+  display:flex;align-items:center;justify-content:center;flex:none;border:none;}

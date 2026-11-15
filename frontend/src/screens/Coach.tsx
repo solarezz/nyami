@@ -63,35 +63,35 @@ export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => 
   }
 
   return (
-    <div className="screen v2-screen gap fade">
+    <div className="screen v3-screen gap fade">
       <div>
-        <div className="v2-h1" style={{ fontSize: 22 }}>Коуч Nyami</div>
-        <div className="v2-sub" style={{ fontSize: 12 }}>видит твой день</div>
+        <div className="v3-h1" style={{ fontSize: 22 }}>Коуч Nyami</div>
+        <div className="v3-sub" style={{ fontSize: 12 }}>видит твой день</div>
       </div>
 
-      <div className="v2-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="v3-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div className="num" style={{ fontSize: 24, fontWeight: 700, color: left < 0 ? 'var(--v2-pnk-ink)' : 'var(--v2-tx)' }}>{left}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--v2-mu)' }}>ккал до нормы</div>
+          <div className="num" style={{ fontSize: 24, fontWeight: 700, color: left < 0 ? '#C2264A' : 'var(--v3-ink)' }}>{left}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--v3-mu)' }}>ккал до нормы</div>
         </div>
-        <Ring progress={frac} color="var(--v2-lime)" track="var(--v2-s2)" size={46} stroke={11} />
+        <Ring progress={frac} color="var(--v3-green)" track="var(--v3-green-soft)" size={46} stroke={11} />
       </div>
 
-      <div className="v2-chatarea">
+      <div className="v3-chatarea">
         {messages.map((m) => (
           <Bubble key={m.id} msg={m} />
         ))}
-        {busy && <div className="v2-bub in" style={{ color: 'var(--v2-mu)' }}>…</div>}
+        {busy && <div className="v3-bub in" style={{ color: 'var(--v3-mu)' }}>…</div>}
         <div ref={endRef} />
       </div>
 
-      <div className="v2-chatbar">
+      <div className="v3-chatbar">
         <input
-          className="v2-chatf" placeholder="Спросить у коуча…" value={input}
+          className="v3-chatf" placeholder="Спросить у коуча…" value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
         />
-        <button type="button" className="v2-sendb" aria-label="Отправить" onClick={send}><MaterialIcon name="send" size={20} /></button>
+        <button type="button" className="v3-sendb" aria-label="Отправить" onClick={send}><MaterialIcon name="send" variant="rounded" size={20} /></button>
       </div>
     </div>
   )
@@ -101,7 +101,7 @@ export function Coach({ onNavigate: _onNavigate }: { onNavigate: (s: Screen) => 
 function Bubble({ msg }: { msg: ChatMessage }) {
   const parts = msg.text.split(/(\*\*[^*]+\*\*)/g)
   return (
-    <div className={`v2-bub ${msg.role === 'user' ? 'out' : 'in'}`}>
+    <div className={`v3-bub ${msg.role === 'user' ? 'out' : 'in'}`}>
       {parts.map((p, i) =>
         p.startsWith('**') && p.endsWith('**') ? <b key={i}>{p.slice(2, -2)}</b> : <span key={i}>{p}</span>,
       )}

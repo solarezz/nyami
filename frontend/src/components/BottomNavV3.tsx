@@ -42,7 +42,7 @@ export function BottomNavV3({ active, onNavigate }: { active: Screen; onNavigate
       )}
       <nav className="v3-nav">
         <button type="button" className={`ni${active === 'today' ? ' on' : ''}`} onClick={() => go('today')} aria-label="Сегодня">
-          <MaterialIcon name="today" variant="rounded" fill={active === 'today'} />
+          <MaterialIcon name="home" variant="rounded" fill={active === 'today'} />
           <span className="nl">Сегодня</span>
         </button>
         <button type="button" className={`ni${active === 'training' ? ' on' : ''}`} onClick={() => go('training')} aria-label="Тренировки">

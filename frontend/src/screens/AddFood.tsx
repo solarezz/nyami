@@ -9,6 +9,11 @@ import { showAlert } from '../telegram'
 import type { Screen } from '../App'
 import type { FrequentMeal } from '../types'
 
+// v3 — редизайн по Fitness App.dc.html, экран «06 · Добавить еду». В макете это
+// поиск по каталогу продуктов, которого у нас нет: распознавание идёт через ИИ
+// (фото/текст/штрихкод), поэтому поисковая строка макета переиспользована как
+// поле описания блюда, а не как настоящий поиск.
+
 const MEAL_LABELS: Record<string, string> = {
   breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус',
 }
@@ -109,70 +114,74 @@ export function AddFood({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           onManual={openLabelPhoto}
         />
       )}
-      <div className="screen v2-screen gap fade">
+      <div className="screen v3-screen gap fade">
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} hidden />
         <input ref={galleryRef} type="file" accept="image/*" onChange={onPhoto} hidden />
 
-        <div className="v2-h1">{selectedMealType ? `Добавить: ${MEAL_LABELS[selectedMealType]}` : 'Добавить еду'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button type="button" className="v3-iconbtn" aria-label="Назад" onClick={() => onNavigate('today')}><MaterialIcon name="arrow_back" variant="rounded" size={22} /></button>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedMealType ? `Добавить: ${MEAL_LABELS[selectedMealType]}` : 'Добавить еду'}</div>
+        </div>
 
         <div className="scrollarea">
-          <button type="button" className="v2-photocta" onClick={() => cameraRef.current?.click()} disabled={busy !== false}>
-            <div style={{ position: 'absolute', right: 16, top: 16, width: 84, height: 84, border: '2.5px solid var(--v2-on)', borderRadius: 10, opacity: 0.25 }} />
-            <div className="v2-photocta-ic"><MaterialIcon name="photo_camera" size={28} fill /></div>
+          <button type="button" className="v3-photocta" onClick={() => cameraRef.current?.click()} disabled={busy !== false}>
+            <div style={{ position: 'absolute', right: 16, top: 16, width: 84, height: 84, border: '2.5px solid #fff', borderRadius: 14, opacity: 0.25 }} />
+            <div className="v3-photocta-ic"><MaterialIcon name="photo_camera" variant="rounded" size={28} fill /></div>
             <div>
-              <div style={{ font: '800 22px/1.05 var(--v2-font-text)', letterSpacing: '-.03em' }}>{busy === 'photo' ? 'Распознаю…' : 'Сфотографировать блюдо'}</div>
-              <div style={{ font: '600 13px var(--v2-font-text)', marginTop: 6, opacity: 0.75 }}>ИИ определит ингредиенты и массу</div>
+              <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.05, letterSpacing: '-.02em' }}>{busy === 'photo' ? 'Распознаю…' : 'Сфотографировать блюдо'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6, opacity: 0.85 }}>ИИ определит ингредиенты и массу</div>
             </div>
           </button>
 
-          <div className="v2-opt2">
-            <button type="button" className="v2-optmini" onClick={() => setScanning(true)} disabled={busy !== false}>
-              <div className="v2-optmini-ic" style={{ background: 'color-mix(in srgb, var(--v2-org) 20%, transparent)', color: 'var(--v2-org-ink)' }}><MaterialIcon name="barcode_scanner" size={22} /></div>
+          <div className="v3-opt2">
+            <button type="button" className="v3-optmini" onClick={() => setScanning(true)} disabled={busy !== false}>
+              <div className="v3-optmini-ic" style={{ background: 'var(--v3-org-track)', color: '#F07A2B' }}><MaterialIcon name="barcode_scanner" variant="rounded" size={22} /></div>
               <div>
-                <div style={{ font: '700 15px var(--v2-font-text)' }}>{busy === 'barcode' ? 'Сканирую…' : 'Штрихкод'}</div>
-                <div style={{ font: '500 12px var(--v2-font-text)', color: 'var(--v2-mu)' }}>данные с упаковки</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{busy === 'barcode' ? 'Сканирую…' : 'Штрихкод'}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--v3-mu)' }}>данные с упаковки</div>
               </div>
             </button>
-            <button type="button" className="v2-optmini" onClick={() => galleryRef.current?.click()} disabled={busy !== false}>
-              <div className="v2-optmini-ic" style={{ background: 'color-mix(in srgb, var(--v2-org) 20%, transparent)', color: 'var(--v2-org-ink)' }}><MaterialIcon name="image" size={22} /></div>
+            <button type="button" className="v3-optmini" onClick={() => galleryRef.current?.click()} disabled={busy !== false}>
+              <div className="v3-optmini-ic" style={{ background: 'var(--v3-org-track)', color: '#F07A2B' }}><MaterialIcon name="image" variant="rounded" size={22} /></div>
               <div>
-                <div style={{ font: '700 15px var(--v2-font-text)' }}>Из галереи</div>
-                <div style={{ font: '500 12px var(--v2-font-text)', color: 'var(--v2-mu)' }}>готовое фото</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>Из галереи</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--v3-mu)' }}>готовое фото</div>
               </div>
             </button>
           </div>
 
-          <div className="v2-textrow">
+          <div className="v3-searchrow">
+            <MaterialIcon name="search" variant="rounded" size={22} style={{ color: 'var(--v3-mu)' }} />
             <textarea
               rows={1} value={text} placeholder="Напиши блюдо: «тарелка борща со сметаной»…"
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onRecognizeText() } }}
             />
-            <button type="button" className="v2-sendbtn" onClick={onRecognizeText} disabled={busy !== false || !text.trim()}>
-              <MaterialIcon name={busy === 'text' ? 'hourglass_top' : 'arrow_upward'} size={20} />
+            <button type="button" className="v3-sendbtn" onClick={onRecognizeText} disabled={busy !== false || !text.trim()}>
+              <MaterialIcon name={busy === 'text' ? 'hourglass_top' : 'arrow_upward'} variant="rounded" size={20} />
             </button>
           </div>
 
-          <div className="v2-aihint">
-            <MaterialIcon name="auto_awesome" size={20} style={{ color: 'var(--v2-yel)', flex: 'none' }} />
-            <div><span style={{ fontWeight: 700, color: 'var(--v2-tx)' }}>Фото и текст распознаёт ИИ — это оценка.</span> Масса и калории приблизительные, проверь их перед сохранением. Штрихкод даёт данные производителя.</div>
+          <div className="v3-aihint">
+            <MaterialIcon name="auto_awesome" variant="rounded" size={20} style={{ color: '#D99A00', flex: 'none' }} />
+            <div><span style={{ fontWeight: 700, color: 'var(--v3-ink)' }}>Фото и текст распознаёт ИИ — это оценка.</span> Масса и калории приблизительные, проверь их перед сохранением. Штрихкод даёт данные производителя.</div>
           </div>
 
           {frequent.length > 0 && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
-                <span style={{ font: '700 17px var(--v2-font-text)' }}>Частые блюда</span>
-                <span style={{ font: '600 12px var(--v2-font-text)', color: 'var(--v2-mu)' }}>за 30 дней</span>
+                <span style={{ fontSize: 17, fontWeight: 700 }}>Частые блюда</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--v3-mu)' }}>за 30 дней</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {frequent.map((f) => (
-                  <button type="button" className="v2-freqrow" key={f.name} onClick={() => addQuick(f)} disabled={busy !== false}>
-                    <div className="v2-meal-thumb" style={{ borderTop: 'none' }}>{f.emoji}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ font: '600 14px var(--v2-font-text)' }}>{f.name}</div>
-                      <div style={{ font: '500 12px var(--v2-font-num)', color: 'var(--v2-mu)' }}>{f.kcal} ккал</div>
+                  <button type="button" className="v3-meal-row" key={f.name} onClick={() => addQuick(f)} disabled={busy !== false} style={{ border: 'none', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
+                    <div className="thumb">{f.emoji}</div>
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{f.name}</div>
+                      <div className="num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--v3-mu)' }}>{f.kcal} ккал</div>
                     </div>
-                    <div className="v2-stepbtn" style={{ width: 36, height: 36, color: 'var(--v2-org-ink)' }}><MaterialIcon name="add" size={20} /></div>
+                    <div className="v3-mini-stepbtn" style={{ background: 'var(--v3-org-track)', color: '#F07A2B' }}><MaterialIcon name="add" variant="rounded" size={20} /></div>
                   </button>
                 ))}
               </div>

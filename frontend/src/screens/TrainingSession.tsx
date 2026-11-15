@@ -6,9 +6,6 @@ import { api } from '../api'
 import { haptic, showConfirm } from '../telegram'
 import type { ExerciseDetail, ExerciseSetRecord, ProgramDay, ProgramExercise } from '../types'
 
-const REST_RADIUS = 27
-const REST_CIRC = 2 * Math.PI * REST_RADIUS
-
 function fmtClock(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
@@ -124,37 +121,60 @@ export function TrainingSession({
   }
 
   const c = muscleColorVars(current.exercise.muscleGroup)
-  const restDash = restRemaining != null ? `${(Math.max(0, restRemaining) / current.restSeconds) * REST_CIRC} ${REST_CIRC}` : `0 ${REST_CIRC}`
+  const REST_BIG_R = 122
+  const REST_BIG_CIRC = 2 * Math.PI * REST_BIG_R
+  const restBigDash = restRemaining != null ? `${(Math.max(0, restRemaining) / current.restSeconds) * REST_BIG_CIRC} ${REST_BIG_CIRC}` : `0 ${REST_BIG_CIRC}`
 
   return (
     <>
     {showSubstitute && detail && (
-      <div className="v2-sheet-backdrop" onClick={() => setShowSubstitute(false)}>
-        <div className="v2-sheet" onClick={(e) => e.stopPropagation()}>
-          <div style={{ font: '700 17px var(--v2-font-text)' }}>Чем заменить</div>
+      <div className="v3-sheet-backdrop" onClick={() => setShowSubstitute(false)}>
+        <div className="v3-sheet" onClick={(e) => e.stopPropagation()}>
+          <div style={{ fontSize: 17, fontWeight: 700 }}>Чем заменить</div>
           {detail.substitutes.filter((ex) => !exercises.some((pe) => pe.exercise.id === ex.id)).map((ex) => (
-            <button type="button" key={ex.id} className="v2-pickrow" onClick={() => pickSubstitute(ex)}>
+            <button type="button" key={ex.id} className="v3-optrow" onClick={() => pickSubstitute(ex)}>
               <div style={{ flex: 1 }}>
                 <div className="ttl">{ex.name}</div>
                 <div className="dsc">{ex.equipment ?? ex.muscleGroup}</div>
               </div>
-              <MaterialIcon name="chevron_right" size={20} />
+              <MaterialIcon name="chevron_right" variant="rounded" size={20} />
             </button>
           ))}
         </div>
       </div>
     )}
-    <div className="screen v2-screen gap fade">
-      <div className="v2-sessiontop">
-        <button type="button" className="v2-closebtn" onClick={close} aria-label="Закрыть"><MaterialIcon name="close" size={22} /></button>
-        <div style={{ flex: 1 }}>
-          <div className="v2-label">{programName} · ИДЁТ</div>
-          <div className="num" style={{ font: '700 18px var(--v2-font-num)' }}>{fmtClock(elapsed)}</div>
+    {restRemaining != null && (
+      <div className="v3-rest">
+        <div className="v3-rest-top"><span style={{ width: 24 }} />Отдых между подходами<MaterialIcon name="music_note" variant="rounded" size={24} /></div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+          <div style={{ position: 'relative', width: 270, height: 270 }}>
+            <svg width={270} height={270} viewBox="0 0 270 270" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx={135} cy={135} r={REST_BIG_R} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={12} />
+              <circle cx={135} cy={135} r={REST_BIG_R} fill="none" stroke="var(--v3-lime)" strokeWidth={12} strokeLinecap="round" strokeDasharray={restBigDash} />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="num" style={{ fontSize: 64, fontWeight: 700, letterSpacing: '-.03em' }}>{fmtClock(Math.max(0, restRemaining))}</div>
+              <div style={{ fontSize: 16, color: '#B5BCAE' }}>Отдых</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" className="v3-chip" style={{ background: 'rgba(255,255,255,.1)', color: '#fff', boxShadow: 'none' }} onClick={() => setRestRemaining((r) => (r ?? 0) + 15)}>+15 с</button>
+          </div>
         </div>
-        <button type="button" className="v2-finishbtn" onClick={finish} disabled={finishing}>{finishing ? 'Завершаю…' : 'Завершить'}</button>
+        <div className="v3-rest-bottom"><button type="button" className="v3-rest-skip" onClick={() => setRestRemaining(null)}>Пропустить отдых</button></div>
+      </div>
+    )}
+    <div className="screen v3-screen gap fade">
+      <div className="v3-sessiontop">
+        <button type="button" className="v3-iconbtn" onClick={close} aria-label="Закрыть"><MaterialIcon name="close" variant="rounded" size={22} /></button>
+        <div style={{ flex: 1 }}>
+          <div className="v3-label">{programName} · ИДЁТ</div>
+          <div className="num" style={{ fontSize: 18, fontWeight: 700 }}>{fmtClock(elapsed)}</div>
+        </div>
+        <button type="button" className="v3-finishbtn" onClick={finish} disabled={finishing}>{finishing ? 'Завершаю…' : 'Завершить'}</button>
       </div>
 
-      <div className="v2-exseg">
+      <div className="v3-exseg">
         {exercises.map((pe, i) => {
           const done = sets.filter((s) => s.exerciseId === pe.exercise.id).length >= pe.targetSets
           return <button key={pe.id} type="button" className={i === currentIndex ? 'current' : done ? 'done' : ''} onClick={() => setCurrentIndex(i)} aria-label={pe.exercise.name} />
@@ -164,120 +184,100 @@ export function TrainingSession({
       <div className="scrollarea">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span className="v2-musclebadge" style={{ background: c.bg, color: c.fg }}>{current.exercise.muscleGroup}</span>
-            <span className="num" style={{ font: '600 13px var(--v2-font-num)', color: 'var(--v2-mu)' }}>УПРАЖНЕНИЕ {currentIndex + 1} / {exercises.length} · {current.targetSets}×{current.targetRepsMin}–{current.targetRepsMax}</span>
+            <span className="v3-musclebadge" style={{ background: c.bg, color: c.fg }}>{current.exercise.muscleGroup}</span>
+            <span className="num" style={{ fontSize: 13, fontWeight: 600, color: 'var(--v3-mu)' }}>УПРАЖНЕНИЕ {currentIndex + 1} / {exercises.length} · {current.targetSets}×{current.targetRepsMin}–{current.targetRepsMax}</span>
           </div>
-          <div className="v2-h1">{current.exercise.name}</div>
+          <div className="v3-h1" style={{ textAlign: 'center' }}>{current.exercise.name}</div>
         </div>
 
         {current.exercise.techniqueVideoUrl ? (
           /\.(mp4|webm|mov)(\?|$)/i.test(current.exercise.techniqueVideoUrl) ? (
-            <video key={current.exercise.id} className="v2-videoph" src={current.exercise.techniqueVideoUrl} controls playsInline style={{ width: '100%', background: 'var(--v2-s2)', objectFit: 'cover' }} />
+            <video key={current.exercise.id} className="v3-videoph" src={current.exercise.techniqueVideoUrl} controls playsInline style={{ width: '100%', background: 'var(--v3-card)', objectFit: 'cover' }} />
           ) : (
-            <img key={current.exercise.id} className="v2-videoph" src={current.exercise.techniqueVideoUrl} alt={`Техника: ${current.exercise.name}`} style={{ width: '100%', objectFit: 'cover' }} />
+            <img key={current.exercise.id} className="v3-videoph" src={current.exercise.techniqueVideoUrl} alt={`Техника: ${current.exercise.name}`} style={{ width: '100%', objectFit: 'cover' }} />
           )
         ) : (
-          <div className="v2-videoph"><MaterialIcon name="play_circle" size={20} />видео техники пока не добавлено</div>
+          <div className="v3-videoph"><MaterialIcon name="play_circle" variant="rounded" size={20} />видео техники пока не добавлено</div>
         )}
 
         {current.exercise.equipment && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>
-            <MaterialIcon name="fitness_center" size={16} />Оборудование: {current.exercise.equipment}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: 'var(--v3-mu)' }}>
+            <MaterialIcon name="fitness_center" variant="rounded" size={16} />Оборудование: {current.exercise.equipment}
           </div>
         )}
 
         {detail && (detail.primaryMuscles.length > 0 || detail.secondaryMuscles.length > 0) && (
-          <div className="v2-card">
+          <div className="v3-card">
             <MuscleDiagram primaryMuscles={detail.primaryMuscles} secondaryMuscles={detail.secondaryMuscles} />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
-              {detail.primaryMuscles.map((m) => <span key={m} className="v2-musclebadge" style={{ background: 'var(--v2-lime)', color: 'var(--v2-on)' }}>{m}</span>)}
-              {detail.secondaryMuscles.map((m) => <span key={m} className="v2-musclebadge" style={{ background: 'var(--v2-s2)', color: 'var(--v2-mu)' }}>{m}</span>)}
+              {detail.primaryMuscles.map((m) => <span key={m} className="v3-musclebadge" style={{ background: 'var(--v3-lime)', color: 'var(--v3-ink)' }}>{m}</span>)}
+              {detail.secondaryMuscles.map((m) => <span key={m} className="v3-musclebadge" style={{ background: 'var(--v3-day-a-off,#F0F1EC)', color: 'var(--v3-mu)' }}>{m}</span>)}
             </div>
           </div>
         )}
 
         {detail && detail.substitutes.filter((ex) => !exercises.some((pe) => pe.exercise.id === ex.id)).length > 0 && (
-          <button type="button" className="v2-pickrow" onClick={() => setShowSubstitute(true)} style={{ justifyContent: 'center', gap: 8 }}>
-            <MaterialIcon name="sync_alt" size={18} />Заменить упражнение
+          <button type="button" className="v3-pickrow" onClick={() => setShowSubstitute(true)} style={{ justifyContent: 'center', gap: 8 }}>
+            <MaterialIcon name="sync_alt" variant="rounded" size={18} />Заменить упражнение
           </button>
         )}
 
-        <div className="v2-setstable">
-          <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 56px 46px', gap: 6, padding: '8px 12px', font: '600 10px var(--v2-font-num)', letterSpacing: '.08em', color: 'var(--v2-mu)', borderBottom: '1px solid var(--v2-ln)' }}>
+        <div className="v3-setstable">
+          <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 56px 46px', gap: 6, padding: '8px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '.08em', color: 'var(--v3-mu)', borderBottom: '1px solid var(--v3-line)' }}>
             <span>#</span><span>ПОДХОД</span><span>КГ</span><span>ПОВТ</span>
           </div>
           {currentSets.length === 0 ? (
-            <div style={{ padding: '14px 12px', font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Пока нет записанных подходов</div>
+            <div style={{ padding: '14px 12px', fontSize: 13, fontWeight: 500, color: 'var(--v3-mu)' }}>Пока нет записанных подходов</div>
           ) : currentSets.map((s) => (
-            <div key={s.id} className="v2-setrow">
-              <span className="num" style={{ font: '700 14px var(--v2-font-num)', color: 'var(--v2-mu)' }}>{s.setNumber}</span>
-              <span className="msi" style={{ color: 'var(--v2-lime-ink)', fontSize: 18 }}>check</span>
-              <span className="num" style={{ font: '700 16px var(--v2-font-num)' }}>{s.weightKg ?? '—'}</span>
-              <span className="num" style={{ font: '700 16px var(--v2-font-num)' }}>{s.repetitions ?? '—'}</span>
+            <div key={s.id} className="v3-setrow">
+              <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--v3-mu)' }}>{s.setNumber}</span>
+              <MaterialIcon name="check" variant="rounded" size={18} style={{ color: 'var(--v3-green)' }} />
+              <span className="num" style={{ fontSize: 16, fontWeight: 700 }}>{s.weightKg ?? '—'}</span>
+              <span className="num" style={{ fontSize: 16, fontWeight: 700 }}>{s.repetitions ?? '—'}</span>
             </div>
           ))}
         </div>
 
-        <div className="v2-bigstepper">
-          <div className="v2-label">Подход {nextSetNumber}</div>
+        <div className="v3-bigstepper">
+          <div className="v3-label">Подход {nextSetNumber}</div>
           <div className="row">
-            <span style={{ font: '600 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Вес, кг</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--v3-mu)' }}>Вес, кг</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button type="button" className="v2-stepbtn" onClick={() => setDraftWeight((w) => Math.max(0, w - 2.5))}><MaterialIcon name="remove" size={18} /></button>
-              <span className="num" style={{ font: '700 24px var(--v2-font-num)', minWidth: 54, textAlign: 'center' }}>{draftWeight}</span>
-              <button type="button" className="v2-stepbtn" onClick={() => setDraftWeight((w) => w + 2.5)}><MaterialIcon name="add" size={18} /></button>
+              <button type="button" className="v3-stepbtn" onClick={() => setDraftWeight((w) => Math.max(0, w - 2.5))}><MaterialIcon name="remove" variant="rounded" size={18} /></button>
+              <span className="num" style={{ fontSize: 24, fontWeight: 700, minWidth: 54, textAlign: 'center' }}>{draftWeight}</span>
+              <button type="button" className="v3-stepbtn" onClick={() => setDraftWeight((w) => w + 2.5)}><MaterialIcon name="add" variant="rounded" size={18} /></button>
             </div>
           </div>
           <div className="row">
-            <span style={{ font: '600 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Повторения</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--v3-mu)' }}>Повторения</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button type="button" className="v2-stepbtn" onClick={() => setDraftReps((r) => Math.max(0, r - 1))}><MaterialIcon name="remove" size={18} /></button>
-              <span className="num" style={{ font: '700 24px var(--v2-font-num)', minWidth: 54, textAlign: 'center' }}>{draftReps}</span>
-              <button type="button" className="v2-stepbtn" onClick={() => setDraftReps((r) => r + 1)}><MaterialIcon name="add" size={18} /></button>
+              <button type="button" className="v3-stepbtn" onClick={() => setDraftReps((r) => Math.max(0, r - 1))}><MaterialIcon name="remove" variant="rounded" size={18} /></button>
+              <span className="num" style={{ fontSize: 24, fontWeight: 700, minWidth: 54, textAlign: 'center' }}>{draftReps}</span>
+              <button type="button" className="v3-stepbtn" onClick={() => setDraftReps((r) => r + 1)}><MaterialIcon name="add" variant="rounded" size={18} /></button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
             {detail?.lastPerformance && currentSets.length === 0 && (
-              <button type="button" className="v2-pickrow" style={{ flex: 1, justifyContent: 'center', gap: 6, padding: '12px' }} onClick={repeatLast}>
-                <MaterialIcon name="replay" size={18} />Как в прошлый раз
+              <button type="button" className="v3-pickrow" style={{ flex: 1, justifyContent: 'center', gap: 6, padding: '12px' }} onClick={repeatLast}>
+                <MaterialIcon name="replay" variant="rounded" size={18} />Как в прошлый раз
               </button>
             )}
-            <button type="button" className="v2-btn" style={{ flex: 1.2, height: 50 }} onClick={logSet} disabled={saving}>
+            <button type="button" className="v3-btn-primary" style={{ flex: 1.2, height: 50, justifyContent: 'center' }} onClick={logSet} disabled={saving}>
               {saving ? 'Записываю…' : 'Записать подход'}
-              <span className="v2-btn-ic" style={{ width: 32, height: 32 }}><MaterialIcon name="check" size={18} /></span>
+              <MaterialIcon name="check" variant="rounded" size={18} />
             </button>
           </div>
         </div>
-
-        {restRemaining != null && (
-          <div className="v2-resttimer">
-            <div style={{ position: 'relative', width: 64, height: 64, flex: 'none' }}>
-              <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="32" cy="32" r={REST_RADIUS} fill="none" stroke="var(--v2-s2)" strokeWidth="6" />
-                <circle cx="32" cy="32" r={REST_RADIUS} fill="none" stroke="var(--v2-blu)" strokeWidth="6" strokeDasharray={restDash} />
-              </svg>
-              <span className="msi" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: 'var(--v2-blu)' }}>timer</span>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ font: '600 11px var(--v2-font-num)', letterSpacing: '.08em', color: 'var(--v2-blu-ink)' }}>ОТДЫХ</div>
-              <div className="num" style={{ font: '700 34px/1 var(--v2-font-num)', letterSpacing: '-.03em', marginTop: 2 }}>{fmtClock(Math.max(0, restRemaining))}</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <button type="button" className="v2-chip" onClick={() => setRestRemaining((r) => (r ?? 0) + 15)}>+15 с</button>
-              <button type="button" className="v2-chip" onClick={() => setRestRemaining(null)}>Пропустить</button>
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="v2-navfooter">
-        <button type="button" className="v2-navbtn" disabled={currentIndex === 0} onClick={() => setCurrentIndex((i) => i - 1)}><MaterialIcon name="chevron_left" size={24} /></button>
-        <button type="button" className="v2-navnext" disabled={currentIndex === exercises.length - 1} onClick={() => setCurrentIndex((i) => i + 1)}>
+      <div className="v3-navfooter">
+        <button type="button" className="v3-navbtn" disabled={currentIndex === 0} onClick={() => setCurrentIndex((i) => i - 1)}><MaterialIcon name="chevron_left" variant="rounded" size={24} /></button>
+        <button type="button" className="v3-navnext" disabled={currentIndex === exercises.length - 1} onClick={() => setCurrentIndex((i) => i + 1)}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="v2-label">Следующее</div>
-            <div style={{ font: '600 14px var(--v2-font-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exercises[currentIndex + 1]?.exercise.name ?? '—'}</div>
+            <div className="v3-label">Следующее</div>
+            <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exercises[currentIndex + 1]?.exercise.name ?? '—'}</div>
           </div>
-          <MaterialIcon name="chevron_right" size={24} />
+          <MaterialIcon name="chevron_right" variant="rounded" size={24} />
         </button>
       </div>
     </div>
