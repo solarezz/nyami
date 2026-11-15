@@ -419,6 +419,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   --v3-org:#FFA23D; --v3-org-track:#FFF1DE;
   --v3-blu:#3D8BFF; --v3-blu-track:#E3EEFF; --v3-blu-soft:#EEF3FB;
   --v3-tip-bg:#EAF5DD; --v3-tip-ic:#D4ECBA; --v3-tip-tx:#3F5233;
+  --v3-day-a:#E6F6D3; --v3-day-b:#CFEAB0; --v3-day-border:#8FCB5C; --v3-day-border-off:#E3E8DD;
+  --v3-day-a-off:#FFFFFF; --v3-day-b-off:#F6F8F3; --v3-day-ink:#2F6B12;
+  --v3-nav-ink:#161A14; --v3-nav-mu:#8E9588; --v3-fab:#7CC447;
+  --v3-chip-off:#FFFFFF; --v3-chip-on:#B6E67A; --v3-chip-ink:#161A14; --v3-chip-mu:#59614F;
   --v3-font-text:'Inter Tight',-apple-system,'SF Pro Display','SF Pro Text',system-ui,sans-serif;
 }
 /* Разумный тёмный фолбэк для клиентов Telegram в тёмной теме — макет сам светлый,
@@ -436,6 +440,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   --v3-org:#FFB366; --v3-org-track:#3A2A18;
   --v3-blu:#5FA8FF; --v3-blu-track:#1C2A3C; --v3-blu-soft:#1C2432;
   --v3-tip-bg:#232D1A; --v3-tip-ic:#33421F; --v3-tip-tx:#DCE6CF;
+  --v3-day-a:#243018; --v3-day-b:#324423; --v3-day-border:#5A8F2E; --v3-day-border-off:rgba(255,255,255,0.08);
+  --v3-day-a-off:#1B1F17; --v3-day-b-off:#20251C; --v3-day-ink:#C8F135;
+  --v3-nav-ink:#F2F4EE; --v3-nav-mu:#767C70; --v3-fab:#6CB83A;
+  --v3-chip-off:#1B1F17; --v3-chip-on:#B6E67A; --v3-chip-ink:#12140F; --v3-chip-mu:#9CA297;
 }
 
 .v3-screen{background:linear-gradient(180deg,var(--v3-bg-top) 0%,var(--v3-bg-mid) 34%,var(--v3-bg-bot) 100%);
@@ -460,12 +468,25 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   box-shadow:var(--v3-shadow-soft);cursor:pointer;display:grid;place-items:center;flex:none;color:var(--v3-ink);}
 
 .v3-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
-.v3-daycell{height:56px;border:none;border-radius:16px;cursor:pointer;background:transparent;color:var(--v3-ink);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:inherit;}
+.v3-daycell{height:62px;border-radius:18px;cursor:pointer;font-family:inherit;padding:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border:1px solid var(--v3-day-border-off);color:var(--v3-ink);
+  background:linear-gradient(180deg,var(--v3-day-a-off) 0%,var(--v3-day-b-off) 100%);
+  box-shadow:0 3px 8px rgba(30,50,20,.07),inset 0 1px 0 #FFFFFF;}
 .v3-daycell .wd{font-size:11px;font-weight:500;opacity:.65;}
 .v3-daycell .dn{font-size:17px;font-weight:700;}
-.v3-daycell.sel{background:var(--v3-ink);color:var(--v3-bg-mid);}
-.v3-daycell .dot{width:4px;height:4px;border-radius:50%;margin-top:1px;}
+.v3-daycell.sel{border:1.5px solid var(--v3-day-border);color:var(--v3-day-ink);
+  background:linear-gradient(180deg,var(--v3-day-a) 0%,var(--v3-day-b) 100%);}
+
+/* ---- Чипы-переключатели (вкладки «Программы/Упражнения/Избранное» и т.п.) ---- */
+.v3-chip{height:38px;padding:0 16px;border-radius:19px;border:none;cursor:pointer;font-family:inherit;
+  font-size:14px;font-weight:600;background:var(--v3-chip-off);color:var(--v3-chip-ink);
+  box-shadow:0 4px 12px rgba(30,50,20,.05);flex:none;}
+.v3-chip.on{background:var(--v3-chip-on);box-shadow:none;}
+/* ---- Сегменты в один ряд, растянуты на всю ширину (период в «Прогрессе») ---- */
+.v3-seg{flex:1;height:40px;border-radius:18px;border:none;cursor:pointer;font-family:inherit;
+  font-size:14px;font-weight:600;background:transparent;color:var(--v3-chip-mu);transition:background .2s;}
+.v3-seg.on{background:var(--v3-chip-on);color:var(--v3-chip-ink);}
 
 .v3-card{background:var(--v3-card);border-radius:28px;padding:18px;box-shadow:var(--v3-shadow-card);
   border:2px solid var(--v3-card);box-sizing:border-box;}
@@ -521,10 +542,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .v3-nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:0 10px calc(12px + env(safe-area-inset-bottom));
   box-sizing:border-box;background:color-mix(in srgb, var(--v3-card) 92%, transparent);backdrop-filter:blur(20px);
   border-top:1px solid var(--v3-line);display:flex;align-items:center;justify-content:space-around;}
-.v3-nav .ni{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--v3-mu);border:none;background:none;
+.v3-nav .ni{display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;color:var(--v3-nav-mu);border:none;background:none;
   font-family:inherit;cursor:pointer;padding:6px 4px;}
-.v3-nav .ni .msr{font-size:22px;}
-.v3-nav .ni .nl{font-size:10.5px;font-weight:600;}
+.v3-nav .ni .msr{font-size:24px;}
+.v3-nav .ni .nl{font-size:11px;font-weight:500;}
 .v3-nav .ni.on{color:var(--v3-green);}
-.v3-nav-fab{width:52px;height:52px;border-radius:26px;background:var(--v3-lime);color:var(--v3-ink);border:none;
-  display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:0 8px 18px rgba(100,170,50,.3);}
+.v3-nav .ni.on .nl{font-weight:700;}
+.v3-nav-fab{width:56px;height:56px;border-radius:28px;background:var(--v3-fab);color:#fff;border:none;margin-top:-14px;
+  display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:0 8px 20px rgba(100,170,50,.4);}

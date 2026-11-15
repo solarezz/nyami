@@ -48,7 +48,7 @@ function dateLabel(iso: string): string {
 }
 
 const RING_R = { outer: 50, mid: 39, inner: 28 }
-const ringFrac = (eaten: number, goal: number) => (goal ? Math.max(0, Math.min(1, eaten / goal)) : 0)
+const ringFrac = (eaten: number, goal: number) => Math.max(0.03, Math.min(1, goal ? eaten / goal : 0))
 const ringDash = (r: number, frac: number) => { const c = 2 * Math.PI * r; return `${c * frac} ${c}` }
 
 function sparklinePath(values: number[], w: number, h: number): string {
@@ -216,14 +216,12 @@ export function Today({
       </div>
 
       <div className="v3-daygrid">
-        {weekDates().map((w, i) => {
-          const logged = (week?.days[i]?.kcal ?? 0) > 0
+        {weekDates().map((w) => {
           const selected = w.date === selectedDate
           return (
             <button key={w.date} type="button" className={`v3-daycell${selected ? ' sel' : ''}`} onClick={() => setSelectedDate(w.date)}>
               <span className="wd">{w.dn}</span>
               <span className="dn">{w.num}</span>
-              <span className="dot" style={{ background: logged ? (selected ? 'var(--v3-bg-mid)' : 'var(--v3-green)') : 'transparent' }} />
             </button>
           )
         })}
@@ -332,8 +330,7 @@ export function Today({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>💧 Вода</div>
             <div className="num" style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-.03em' }}>{d.water.done}<span style={{ fontSize: 15, color: 'var(--v3-mu)', fontWeight: 500 }}> / {d.water.goal}</span></div>
             <div style={{ position: 'absolute', right: 16, bottom: 16, width: 52, height: 80, clipPath: 'polygon(0 0,100% 0,88% 100%,12% 100%)', background: 'linear-gradient(90deg,rgba(255,255,255,.9),rgba(220,235,250,.5) 40%,rgba(255,255,255,.9))', borderRadius: '4px 4px 10px 10px', boxShadow: 'inset 0 0 0 2px rgba(150,190,230,.6)', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${Math.min(100, (d.water.done / d.water.goal) * 100)}%`, background: 'linear-gradient(180deg,#8EC7FF,#3D8BFF)', transition: 'height .3s' }} />
-              <div style={{ position: 'absolute', left: 8, top: 6, width: 4, bottom: 10, borderRadius: 2, background: 'rgba(255,255,255,.85)' }} />
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${8 + Math.min(1, d.water.done / d.water.goal) * 82}%`, background: 'linear-gradient(180deg,#9CCBFF 0%,#5AA6FF 100%)', borderTop: '3px solid #C6E1FF', transition: 'height .35s ease' }} />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 'auto', position: 'relative', zIndex: 1 }}>
               <button type="button" className="v3-mini-stepbtn" style={{ background: 'var(--v3-blu-soft)', color: 'var(--v3-blu)' }} onClick={() => changeWater(-1)} aria-label="Меньше воды"><MaterialIcon name="remove" variant="rounded" size={20} /></button>
