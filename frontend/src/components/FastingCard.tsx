@@ -15,23 +15,23 @@ export function FastingCard({ protocol, eatStartHour }: { protocol: FastingProto
   if (!st) return null
 
   const eating = st.phase === 'eating'
-  const color = eating ? 'var(--v2-lime)' : 'var(--v2-blu)'
-  const track = 'var(--v2-s2)'
+  const color = eating ? 'var(--v3-green)' : 'var(--v3-blu)'
+  const track = eating ? 'var(--v3-green-soft)' : 'var(--v3-blu-track)'
 
   return (
-    <div className="v2-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div className="v3-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700 }}>
           {eating ? '🍽️ Окно еды' : '⏳ Голодание'}
           <span style={{
             padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-            background: 'color-mix(in srgb, var(--v2-lime) 18%, transparent)', color: 'var(--v2-lime-ink)',
+            background: 'var(--v3-green-soft)', color: 'var(--v3-green-deep)',
           }}>
             {protocol.toUpperCase()}
           </span>
         </div>
         <div className="num" style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.02em', marginTop: 4 }}>{formatLeft(st.msLeft)}</div>
-        <div style={{ marginTop: 2, fontSize: 12, fontWeight: 600, color: 'var(--v2-mu)' }}>
+        <div style={{ marginTop: 2, fontSize: 12, fontWeight: 600, color: 'var(--v3-mu)' }}>
           {eating ? 'до конца окна' : 'до начала еды'} · {st.windowLabel}
         </div>
       </div>

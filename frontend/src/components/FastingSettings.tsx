@@ -33,16 +33,16 @@ export function FastingSettings() {
   }
 
   return (
-    <div className="v2-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="v3-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <MaterialIcon name="hourglass_top" size={18} style={{ color: 'var(--v2-mu)' }} />
-        <span style={{ font: '700 15px var(--v2-font-text)' }}>Интервальное голодание</span>
+        <MaterialIcon name="hourglass_top" variant="rounded" size={18} style={{ color: 'var(--v3-mu)' }} />
+        <span style={{ fontSize: 15, fontWeight: 700 }}>Интервальное голодание</span>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {PROTOCOL_LABELS.map((o) => (
           <button
-            type="button" key={o.key} className={`v2-chip${protocol === o.key ? ' on' : ''}`}
+            type="button" key={o.key} className={`v3-chip${protocol === o.key ? ' on' : ''}`}
             onClick={() => { haptic('light'); setProtocol(o.key) }}
           >
             {o.label}
@@ -53,24 +53,24 @@ export function FastingSettings() {
       {protocol !== 'off' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="v2-field-label">Начало окна еды</span>
+            <span className="v3-field-label">Начало окна еды</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button type="button" className="v2-stepbtn" style={{ width: 32, height: 32 }} onClick={() => shift(-1)} aria-label="Раньше"><MaterialIcon name="remove" size={16} /></button>
-              <span style={{ font: '700 16px var(--v2-font-num)', minWidth: 54, textAlign: 'center' }}>{String(eatStart).padStart(2, '0')}:00</span>
-              <button type="button" className="v2-stepbtn" style={{ width: 32, height: 32 }} onClick={() => shift(1)} aria-label="Позже"><MaterialIcon name="add" size={16} /></button>
+              <button type="button" className="v3-stepbtn" style={{ width: 32, height: 32 }} onClick={() => shift(-1)} aria-label="Раньше"><MaterialIcon name="remove" variant="rounded" size={16} /></button>
+              <span className="num" style={{ fontSize: 16, fontWeight: 700, minWidth: 54, textAlign: 'center' }}>{String(eatStart).padStart(2, '0')}:00</span>
+              <button type="button" className="v3-stepbtn" style={{ width: 32, height: 32 }} onClick={() => shift(1)} aria-label="Позже"><MaterialIcon name="add" variant="rounded" size={16} /></button>
             </div>
           </div>
           {preview && (
-            <div style={{ font: '500 12px var(--v2-font-text)', color: 'var(--v2-mu)' }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--v3-mu)' }}>
               {preview.windowLabel} · сейчас {preview.phase === 'eating' ? 'окно еды' : 'голодание'}, осталось {formatLeft(preview.msLeft)}
             </div>
           )}
         </>
       )}
 
-      <button type="button" className="v2-btn" onClick={save} disabled={!dirty || saving} style={!dirty || saving ? { opacity: 0.6 } : undefined}>
+      <button type="button" className="v3-btn-primary" style={{ justifyContent: 'center', width: '100%', opacity: !dirty || saving ? 0.6 : 1 }} onClick={save} disabled={!dirty || saving}>
         {saving ? 'Сохраняю…' : 'Сохранить режим'}
-        <span className="v2-btn-ic"><MaterialIcon name="check" size={20} /></span>
+        <MaterialIcon name="check" variant="rounded" size={20} />
       </button>
     </div>
   )

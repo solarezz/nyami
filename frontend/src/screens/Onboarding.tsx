@@ -22,11 +22,11 @@ export function Onboarding({ onNavigate }: { onNavigate: (s: Screen) => void }) 
   }
 
   return (
-    <div className="screen v2-screen gap fade">
-      <div className="v2-stepbar"><i className="on" /><i className="on" /><i className="on" /><i className="on" /></div>
+    <div className="screen v3-screen gap fade">
+      <div className="v3-stepbar"><i className="on" /><i className="on" /><i className="on" /><i className="on" /></div>
       <div>
-        <div className="v2-h1">Расскажите о себе</div>
-        <div className="v2-sub" style={{ marginTop: 6 }}>Нужно для расчёта нормы по формуле Миффлина — Сан Жеора.</div>
+        <div className="v3-h1">Расскажите о себе</div>
+        <div className="v3-sub" style={{ marginTop: 6 }}>Нужно для расчёта нормы по формуле Миффлина — Сан Жеора.</div>
       </div>
       <div className="scrollarea">
         <ProfileForm initial={initial} submitLabel="Начать" onSubmit={submit} />

@@ -13,9 +13,9 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   // Если распознавание не готово (зашли напрямую) — вернём на «Добавить».
   if (!pending) {
     return (
-      <div className="screen v2-screen" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <button type="button" className="v2-btn" style={{ maxWidth: 240 }} onClick={() => onNavigate('add')}>
-          Добавить еду<span className="v2-btn-ic"><MaterialIcon name="arrow_forward" size={22} /></span>
+      <div className="screen v3-screen" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <button type="button" className="v3-btn-primary" style={{ maxWidth: 240, justifyContent: 'center' }} onClick={() => onNavigate('add')}>
+          Добавить еду<MaterialIcon name="arrow_forward" variant="rounded" size={22} />
         </button>
       </div>
     )
@@ -65,62 +65,62 @@ export function Result({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }
 
   return (
-    <div className="screen v2-screen gap fade">
-      <div className="v2-h1">Проверь и добавь</div>
+    <div className="screen v3-screen gap fade">
+      <div className="v3-h1">Проверь и добавь</div>
 
       <div className="scrollarea">
         {pendingImage ? (
-          <div className="v2-photoframe">
+          <div className="v3-photoframe">
             <img src={pendingImage} alt={r.name} />
-            <div className="v2-aibadge"><MaterialIcon name="auto_awesome" size={15} />Оценка ИИ · уверенность {confidencePct}%</div>
+            <div className="v3-aibadge"><MaterialIcon name="auto_awesome" variant="rounded" size={15} />Оценка ИИ · уверенность {confidencePct}%</div>
           </div>
         ) : (
-          <div className="v2-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <MaterialIcon name="auto_awesome" size={20} style={{ color: 'var(--v2-yel)' }} />
-            <span style={{ font: '600 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Оценка ИИ · уверенность {confidencePct}%</span>
+          <div className="v3-card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <MaterialIcon name="auto_awesome" variant="rounded" size={20} style={{ color: '#D99A00' }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--v3-mu)' }}>Оценка ИИ · уверенность {confidencePct}%</span>
           </div>
         )}
 
         <div>
-          <div style={{ font: '800 26px/1.05 var(--v2-font-text)', letterSpacing: '-.035em' }}>{r.emoji} {r.name}</div>
-          <div style={{ font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)', marginTop: 4 }}>
+          <div style={{ fontSize: 26, lineHeight: 1.05, fontWeight: 800, letterSpacing: '-.035em' }}>{r.emoji} {r.name}</div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--v3-mu)', marginTop: 4 }}>
             {r.extras.length > 0 ? `${r.extras.length + 1} компонентов · массу можно поправить` : 'массу можно поправить'}
           </div>
         </div>
 
-        <div className="v2-card v2-totalsgrid">
+        <div className="v3-card v3-totalsgrid">
           <div>
-            <div className="v2-field-label">Итого</div>
-            <div style={{ font: '700 30px/1 var(--v2-font-num)', letterSpacing: '-.04em', color: 'var(--v2-org-ink)' }}>{totalKcal}</div>
-            <div style={{ font: '500 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>ккал · {totalGrams} г</div>
+            <div className="v3-field-label">Итого</div>
+            <div className="num" style={{ fontSize: 30, lineHeight: 1, fontWeight: 700, letterSpacing: '-.04em', color: '#F07A2B' }}>{totalKcal}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--v3-mu)' }}>ккал · {totalGrams} г</div>
           </div>
           <div>
-            <div className="v2-totalbar" style={{ background: 'var(--v2-vio)' }} />
-            <div style={{ font: '700 17px var(--v2-font-num)' }}>{totalProtein}</div>
-            <div style={{ font: '500 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>белки, г</div>
+            <div className="v3-totalbar" style={{ background: 'var(--v3-vio)' }} />
+            <div className="num" style={{ fontSize: 17, fontWeight: 700 }}>{totalProtein}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--v3-mu)' }}>белки, г</div>
           </div>
           <div>
-            <div className="v2-totalbar" style={{ background: 'var(--v2-yel)' }} />
-            <div style={{ font: '700 17px var(--v2-font-num)' }}>{totalFat}</div>
-            <div style={{ font: '500 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>жиры, г</div>
+            <div className="v3-totalbar" style={{ background: '#FFA23D' }} />
+            <div className="num" style={{ fontSize: 17, fontWeight: 700 }}>{totalFat}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--v3-mu)' }}>жиры, г</div>
           </div>
           <div>
-            <div className="v2-totalbar" style={{ background: 'var(--v2-tea)' }} />
-            <div style={{ font: '700 17px var(--v2-font-num)' }}>{totalCarbs}</div>
-            <div style={{ font: '500 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>углев., г</div>
+            <div className="v3-totalbar" style={{ background: 'var(--v3-blu)' }} />
+            <div className="num" style={{ fontSize: 17, fontWeight: 700 }}>{totalCarbs}</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--v3-mu)' }}>углев., г</div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <IngredientRow name={`${r.emoji} ${r.name}`} kcal={kcal} protein={Math.round(r.protein * scale)} fat={Math.round(r.fat * scale)} carbs={Math.round(r.carbs * scale)} grams={grams} onChange={changeGrams} />
           {scaledExtras.map((e, i) => (
             <IngredientRow key={`${e.name}-${i}`} name={`${e.emoji} ${e.name}`} kcal={e.kcal} protein={e.protein} fat={e.fat} carbs={e.carbs} grams={e.grams} onChange={(g) => changeExtra(i, g)} />
           ))}
         </div>
 
-        <button type="button" className="v2-btn" onClick={confirm} disabled={saving}>
+        <button type="button" className="v3-btn-primary" style={{ justifyContent: 'center', width: '100%' }} onClick={confirm} disabled={saving}>
           {saving ? 'Добавляю…' : `Добавить в обед · ${totalKcal} ккал`}
-          <span className="v2-btn-ic"><MaterialIcon name={saving ? 'hourglass_top' : 'check'} size={22} /></span>
+          <MaterialIcon name={saving ? 'hourglass_top' : 'check'} variant="rounded" size={22} />
         </button>
       </div>
     </div>
@@ -131,18 +131,18 @@ function IngredientRow({
   name, kcal, protein, fat, carbs, grams, onChange,
 }: { name: string; kcal: number; protein: number; fat: number; carbs: number; grams: number; onChange: (g: number) => void }) {
   return (
-    <div className="v2-ingrow">
+    <div className="v3-ingrow">
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ font: '600 14px var(--v2-font-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-        <div style={{ font: '500 12px var(--v2-font-num)', color: 'var(--v2-mu)', marginTop: 3 }}>
-          <span style={{ color: 'var(--v2-tx)', fontWeight: 700 }}>{kcal} ккал</span> · Б {protein} · Ж {fat} · У {carbs}
+        <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+        <div className="num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--v3-mu)', marginTop: 3 }}>
+          <span style={{ color: 'var(--v3-ink)', fontWeight: 700 }}>{kcal} ккал</span> · Б {protein} · Ж {fat} · У {carbs}
         </div>
       </div>
-      <div className="v2-qtystepper">
-        <button type="button" onClick={() => onChange(grams - 10)}><MaterialIcon name="remove" size={18} /></button>
+      <div className="v3-qtystepper">
+        <button type="button" onClick={() => onChange(grams - 10)}><MaterialIcon name="remove" variant="rounded" size={18} /></button>
         <input type="number" value={grams} onChange={(e) => onChange(Number(e.target.value) || 0)} />
-        <span style={{ font: '500 11px var(--v2-font-text)', color: 'var(--v2-mu)', marginLeft: -2 }}>г</span>
-        <button type="button" onClick={() => onChange(grams + 10)}><MaterialIcon name="add" size={18} /></button>
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--v3-mu)', marginLeft: -2 }}>г</span>
+        <button type="button" onClick={() => onChange(grams + 10)}><MaterialIcon name="add" variant="rounded" size={18} /></button>
       </div>
     </div>
   )

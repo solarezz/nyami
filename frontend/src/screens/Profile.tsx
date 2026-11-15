@@ -1,6 +1,6 @@
 import { ProfileForm } from '../components/ProfileForm'
 import { FastingSettings } from '../components/FastingSettings'
-import { BottomNavV2 } from '../components/BottomNavV2'
+import { BottomNavV3 } from '../components/BottomNavV3'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { Avatar } from '../components/Avatar'
 import { useData } from '../data/store'
@@ -31,12 +31,12 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   }
 
   return (
-    <div className="screen v2-screen gap fade">
-      <div className="v2-topbar">
-        <Avatar photoUrl={tgUser?.photo_url} name={displayName} />
+    <div className="screen v3-screen gap fade">
+      <div className="v3-topbar">
+        <Avatar className="v3-avatar" photoUrl={tgUser?.photo_url} name={displayName} />
         <div style={{ flex: 1 }}>
-          <div style={{ font: '800 20px var(--v2-font-text)', letterSpacing: '-.025em' }}>{displayName}</div>
-          {me.user.username && <div style={{ font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>@{me.user.username}</div>}
+          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.025em' }}>{displayName}</div>
+          {me.user.username && <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--v3-mu)' }}>@{me.user.username}</div>}
         </div>
       </div>
 
@@ -45,34 +45,34 @@ export function Profile({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
         <FastingSettings />
 
-        <div className="v2-label" style={{ marginTop: 2 }}>Настройки</div>
-        <div className="v2-settingsrow">
+        <div className="v3-label" style={{ marginTop: 2 }}>Настройки</div>
+        <div className="v3-settingsrow">
           <button type="button" className="row" style={{ width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }} onClick={() => onNavigate('coach')}>
-            <MaterialIcon name="forum" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <MaterialIcon name="forum" variant="rounded" size={20} style={{ color: 'var(--v3-mu)' }} />
             <span style={{ flex: 1 }}>Коуч</span>
-            <MaterialIcon name="chevron_right" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <MaterialIcon name="chevron_right" variant="rounded" size={20} style={{ color: 'var(--v3-mu)' }} />
           </button>
           <div className="row">
-            <MaterialIcon name="notifications" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <MaterialIcon name="notifications" variant="rounded" size={20} style={{ color: 'var(--v3-mu)' }} />
             <span style={{ flex: 1 }}>Напоминания</span>
-            <button type="button" className={`v2-toggle${p.remindersEnabled ? ' on' : ''}`} onClick={toggleReminders} aria-label="Напоминания о приёмах пищи и отчёт за неделю" aria-pressed={p.remindersEnabled}>
+            <button type="button" className={`v3-toggle${p.remindersEnabled ? ' on' : ''}`} onClick={toggleReminders} aria-label="Напоминания о приёмах пищи и отчёт за неделю" aria-pressed={p.remindersEnabled}>
               <span className="knob" />
             </button>
           </div>
           <div className="row">
-            <MaterialIcon name="public" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <MaterialIcon name="public" variant="rounded" size={20} style={{ color: 'var(--v3-mu)' }} />
             <span style={{ flex: 1 }}>Часовой пояс</span>
-            <span style={{ font: '500 13px var(--v2-font-num)', color: 'var(--v2-mu)' }}>{p.timezone}</span>
+            <span className="num" style={{ fontSize: 13, fontWeight: 500, color: 'var(--v3-mu)' }}>{p.timezone}</span>
           </div>
           <div className="row">
-            <MaterialIcon name="contrast" size={20} style={{ color: 'var(--v2-mu)' }} />
+            <MaterialIcon name="contrast" variant="rounded" size={20} style={{ color: 'var(--v3-mu)' }} />
             <span style={{ flex: 1 }}>Тема</span>
-            <span style={{ font: '500 13px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Как в Telegram</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--v3-mu)' }}>Как в Telegram</span>
           </div>
         </div>
       </div>
 
-      <BottomNavV2 active="profile" onNavigate={onNavigate} />
+      <BottomNavV3 active="profile" onNavigate={onNavigate} />
     </div>
   )
 }

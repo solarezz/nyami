@@ -20,9 +20,9 @@ function matchRegions(names: string[]): Region[] {
 }
 
 function fillFor(region: Region, primary: Region[], secondary: Region[]): string {
-  if (primary.includes(region)) return 'var(--v2-lime)'
-  if (secondary.includes(region)) return 'color-mix(in srgb, var(--v2-lime) 40%, var(--v2-s2))'
-  return 'var(--v2-s2)'
+  if (primary.includes(region)) return 'var(--v3-green)'
+  if (secondary.includes(region)) return 'color-mix(in srgb, var(--v3-green) 40%, var(--v3-day-a-off, #E9ECE5))'
+  return 'var(--v3-day-a-off, #E9ECE5)'
 }
 
 export function MuscleDiagram({ primaryMuscles, secondaryMuscles }: { primaryMuscles: string[]; secondaryMuscles: string[] }) {
@@ -34,7 +34,7 @@ export function MuscleDiagram({ primaryMuscles, secondaryMuscles }: { primaryMus
     <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <svg width="72" height="150" viewBox="0 0 72 150">
-          <circle cx="36" cy="14" r="12" fill="var(--v2-s2)" />
+          <circle cx="36" cy="14" r="12" fill="var(--v3-day-a-off, #E9ECE5)" />
           <rect x="16" y="28" width="12" height="14" rx="5" fill={f('shoulders')} />
           <rect x="44" y="28" width="12" height="14" rx="5" fill={f('shoulders')} />
           <rect x="22" y="32" width="28" height="34" rx="6" fill={f('chest')} />
@@ -44,11 +44,11 @@ export function MuscleDiagram({ primaryMuscles, secondaryMuscles }: { primaryMus
           <rect x="20" y="96" width="14" height="48" rx="6" fill={f('quads')} />
           <rect x="38" y="96" width="14" height="48" rx="6" fill={f('quads')} />
         </svg>
-        <span style={{ font: '600 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Спереди</span>
+        <span style={{ font: '600 11px var(--v3-font-text)', color: 'var(--v3-mu)' }}>Спереди</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <svg width="72" height="150" viewBox="0 0 72 150">
-          <circle cx="36" cy="14" r="12" fill="var(--v2-s2)" />
+          <circle cx="36" cy="14" r="12" fill="var(--v3-day-a-off, #E9ECE5)" />
           <rect x="16" y="28" width="12" height="14" rx="5" fill={f('shoulders')} />
           <rect x="44" y="28" width="12" height="14" rx="5" fill={f('shoulders')} />
           <rect x="22" y="32" width="28" height="40" rx="6" fill={f('back')} />
@@ -58,7 +58,7 @@ export function MuscleDiagram({ primaryMuscles, secondaryMuscles }: { primaryMus
           <rect x="20" y="96" width="14" height="48" rx="6" fill={f('hamstrings')} />
           <rect x="38" y="96" width="14" height="48" rx="6" fill={f('hamstrings')} />
         </svg>
-        <span style={{ font: '600 11px var(--v2-font-text)', color: 'var(--v2-mu)' }}>Сзади</span>
+        <span style={{ font: '600 11px var(--v3-font-text)', color: 'var(--v3-mu)' }}>Сзади</span>
       </div>
     </div>
   )
